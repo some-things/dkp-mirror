@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
+import sleep from "../utils/sleep";
 import etcdContainer from "../utils/docker/etcd";
+import etcdClient from "../utils/etcd/client";
 
 // TODO: make dynamic
 const bundleRootDir = "./support-bundle-2022-01-25T19_20_12";
@@ -68,10 +70,25 @@ const parseResourceFiles = () => {
   });
 };
 
-export const up = () => {
+const up = async () => {
   parseResourceFiles();
-  console.log("Starting ETCD stuff :) ~~~~");
-  etcdContainer();
+
+  // !IMPORTANT: The main issue appears to be that this await isn't working right... For example, the sleep executes before we see output from this function... I'm not sure why...
+  await etcdContainer();
+
+  await sleep(20000);
+
+  await etcdClient.put("foo").value("bar");
+
+  const fooValue = await etcdClient.get("foo").string();
+  console.log("foo was:", fooValue);
+
+  const allFValues = await etcdClient.getAll().prefix("f").keys();
+  console.log('all our keys starting with "f":', allFValues);
+
+  await etcdClient.delete().all();
+
+  // await sleep(5000);
 };
 
 export default up;

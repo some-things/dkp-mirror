@@ -46,7 +46,7 @@ const createAndStartEtcdContainer = () => {
         console.log("Created dkp-mirror-etcd container ID: ", container?.id);
         container?.start({}, (err) => {
           if (!err) {
-            console.log(`Started dkp-mirror-etcd container ${container?.id}`);
+            console.log("Started dkp-mirror-etcd container");
           } else {
             console.log(err);
           }
@@ -58,17 +58,48 @@ const createAndStartEtcdContainer = () => {
   );
 };
 
-const etcdContainer = () => {
+// const etcdContainer = async (
+//   callback?: Function | undefined
+// ): Promise<void> => {
+//   docker.pull("k8s.gcr.io/etcd:3.4.13-0", {}, (err, stream) => {
+//     if (!err) {
+//       console.log("Pulling etcd image...");
+//       // stream.pipe(stdout);
+
+//       // follow pull progress, then create container on pull finished
+//       docker.modem.followProgress(stream, createAndStartEtcdContainer);
+
+//       if (typeof callback === "function") {
+//         callback();
+//       }
+//     } else {
+//       console.log(err);
+//     }
+//     return;
+//   });
+// };
+
+const etcdContainer = async (
+  callback?: Function | undefined
+): Promise<void> => {
   docker.pull("k8s.gcr.io/etcd:3.4.13-0", {}, (err, stream) => {
     if (!err) {
       console.log("Pulling etcd image...");
       // stream.pipe(stdout);
+
       // follow pull progress, then create container on pull finished
       docker.modem.followProgress(stream, createAndStartEtcdContainer);
+
+      if (typeof callback === "function") {
+        callback();
+        return;
+      }
     } else {
       console.log(err);
+      return;
     }
   });
+  return;
 };
 
 // etcdContainer();
