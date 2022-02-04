@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import etcdContainer from "../utils/docker/etcd";
 
 // TODO: make dynamic
 const bundleRootDir = "./support-bundle-2022-01-25T19_20_12";
@@ -69,6 +70,8 @@ const parseResourceFiles = () => {
 
 export const up = () => {
   parseResourceFiles();
+  console.log("Starting ETCD stuff :) ~~~~");
+  etcdContainer();
 };
 
 export default up;
