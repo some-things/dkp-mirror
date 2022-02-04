@@ -4,53 +4,43 @@ import { stdout } from "process";
 
 const docker = dockerClient;
 
-const pullEtcdImage = async () => {
-  await docker.pull("redis", function (err: any, stream: any) {
-    if (err) {
-      return console.error(err);
-    }
-    stream.pipe(stdout);
-  });
-};
-
-const runEtcdContainer = async () => {
-  //run and give a container a name and a label
-  docker.run(
-    "redis",
-    [],
-    stdout,
+const createAndStartEtcdContainer = () => {
+  console.log("Successfully pulled image");
+  console.log("Creating container...");
+  docker.createContainer(
     {
-      name: "MyNamedContainer",
-      Labels: {
-        environment: "blueWhale",
-      },
-      HostConfig: {
-        PortBindings: {
-          "6379/tcp": [
-            {
-              HostPort: "6379", //Map container to a random unused port.
-            },
-          ],
-        },
-      },
+      Image: "nginx",
     },
-    function (err: any, data: any, container: any) {
-      if (err) {
-        return console.error(err);
+    (err, container) => {
+      if (!err) {
+        console.log("Created container ID: ", container?.id);
+        container?.start({}, (err) => {
+          if (!err) {
+            console.log(`Started container ${container?.id}`);
+          } else {
+            console.log(err);
+          }
+        });
+      } else {
+        console.log(err);
       }
-      console.log(data.StatusCode);
-      console.log(container);
     }
   );
 };
 
-// !Need to figure out why this does not pull the image first
-// maybe this? https://github.com/apocas/dockerode/issues/357
 const etcdContainer = () => {
-  pullEtcdImage();
-  runEtcdContainer();
+  docker.pull("nginx", {}, (err, stream) => {
+    if (!err) {
+      console.log("Pulling image...");
+      stream.pipe(stdout);
+      // follow pull progress, then create container on pull finished
+      docker.modem.followProgress(stream, createAndStartEtcdContainer);
+    } else {
+      console.log(err);
+    }
+  });
 };
 
-etcdContainer();
+// etcdContainer();
 
 export default etcdContainer;
