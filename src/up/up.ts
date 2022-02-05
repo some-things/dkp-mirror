@@ -74,7 +74,7 @@ const up = async () => {
   parseResourceFiles();
 
   // !IMPORTANT: The main issue appears to be that this await isn't working right... For example, the sleep executes before we see output from this function... I'm not sure why...
-  await etcdContainer();
+  etcdContainer();
 
   await sleep(20000);
 
@@ -87,8 +87,6 @@ const up = async () => {
   console.log('all our keys starting with "f":', allFValues);
 
   await etcdClient.delete().all();
-
-  // await sleep(5000);
 };
 
 export default up;

@@ -9,6 +9,7 @@ const createAndStartEtcdContainer = () => {
   console.log("Creating container dkp-mirror-etcd...");
   docker.createContainer(
     {
+      name: "dkp-mirror-etcd",
       Hostname: "dkp-mirror-etcd",
       Cmd: [
         "etcd",
@@ -79,9 +80,7 @@ const createAndStartEtcdContainer = () => {
 //   });
 // };
 
-const etcdContainer = async (
-  callback?: Function | undefined
-): Promise<void> => {
+const etcdContainer = (callback?: Function | undefined) => {
   docker.pull("k8s.gcr.io/etcd:3.4.13-0", {}, (err, stream) => {
     if (!err) {
       console.log("Pulling etcd image...");
