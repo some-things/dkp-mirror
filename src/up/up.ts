@@ -1,8 +1,10 @@
 import fs from "fs";
 import path from "path";
-import sleep from "../utils/sleep";
+import dockerNetwork from "../utils/docker/network";
+// import sleep from "../utils/sleep";
 import etcdContainer from "../utils/docker/etcd";
-import etcdClient from "../utils/etcd/client";
+// import etcdClient from "../utils/etcd/client";
+import apiServerContainer from "../utils/docker/apiServer";
 
 // TODO: make dynamic
 const bundleRootDir = "./support-bundle-2022-01-25T19_20_12";
@@ -73,20 +75,29 @@ const parseResourceFiles = () => {
 const up = async () => {
   parseResourceFiles();
 
-  // !IMPORTANT: The main issue appears to be that this await isn't working right... For example, the sleep executes before we see output from this function... I'm not sure why...
+  await dockerNetwork();
+
+  // !IMPORTANT: Figure out why this doesn't execute synchronously
+  // Probably something with dockerode: https://github.com/apocas/dockerode
   etcdContainer();
+  // (async () => {
+  //   try {
+  //     await sleep(10000);
+  //     await etcdClient.put("foo").value("bar");
 
-  await sleep(20000);
+  //     const fooValue = await etcdClient.get("foo").string();
+  //     console.log("foo was:", fooValue);
 
-  await etcdClient.put("foo").value("bar");
+  //     const allFValues = await etcdClient.getAll().prefix("f").keys();
+  //     console.log('all our keys starting with "f":', allFValues);
 
-  const fooValue = await etcdClient.get("foo").string();
-  console.log("foo was:", fooValue);
+  //     await etcdClient.delete().all();
+  //   } catch (error) {
+  //     console.log(error);
+  //   }
+  // })();
 
-  const allFValues = await etcdClient.getAll().prefix("f").keys();
-  console.log('all our keys starting with "f":', allFValues);
-
-  await etcdClient.delete().all();
+  await apiServerContainer();
 };
 
 export default up;
