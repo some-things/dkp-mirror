@@ -2,8 +2,6 @@ import { Container } from "dockerode";
 import sleep from "../sleep";
 import dockerClient from "./client";
 
-// import { stdout } from "process";
-
 const docker = dockerClient;
 
 const etcdContainer = async (): Promise<Container> => {

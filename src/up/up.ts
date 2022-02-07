@@ -1,10 +1,9 @@
 import fs from "fs";
 import path from "path";
 import dockerNetwork from "../utils/docker/network";
-// import sleep from "../utils/sleep";
 import etcdContainer from "../utils/docker/etcd";
-import etcdClient from "../utils/etcd/client";
-// import apiServerContainer from "../utils/docker/apiServer";
+// import etcdClient from "../utils/etcd/client";
+import apiServerContainer from "../utils/docker/apiServer";
 
 // TODO: make dynamic
 const bundleRootDir = "./support-bundle-2022-01-25T19_20_12";
@@ -77,21 +76,21 @@ const up = async () => {
   await dockerNetwork();
   await etcdContainer();
 
-  try {
-    await etcdClient.put("foo").value("bar");
+  // try {
+  //   await etcdClient.put("foo").value("bar");
 
-    const fooValue = await etcdClient.get("foo").string();
-    console.log("foo was:", fooValue);
+  //   const fooValue = await etcdClient.get("foo").string();
+  //   console.log("foo was:", fooValue);
 
-    const allFValues = await etcdClient.getAll().prefix("f").keys();
-    console.log('all our keys starting with "f":', allFValues);
+  //   const allFValues = await etcdClient.getAll().prefix("f").keys();
+  //   console.log('all our keys starting with "f":', allFValues);
 
-    await etcdClient.delete().all();
-  } catch (error) {
-    console.log(error);
-  }
+  //   await etcdClient.delete().all();
+  // } catch (error) {
+  //   console.log(error);
+  // }
 
-  // await apiServerContainer();
+  await apiServerContainer();
 };
 
 export default up;

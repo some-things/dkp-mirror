@@ -147,3 +147,4 @@ scratch*
 support-bundle*
 build/
 notes.md
+kubeconfig.mirror

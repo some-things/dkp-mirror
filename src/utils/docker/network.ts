@@ -22,9 +22,6 @@ const dockerNetwork = async (): Promise<Network> => {
       console.error(error);
     }
   }
-  // return new Promise<Network>((resolve, reject) => {
-  //   resolve(docker.getNetwork("dkp-mirror-network"));
-  // });
 
   return docker.getNetwork("dkp-mirror-network");
 };
