@@ -30,11 +30,11 @@ const etcdContainer = async (): Promise<Container> => {
       "7001/tcp": {},
     },
     HostConfig: {
-      AutoRemove: true,
-      RestartPolicy: {
-        Name: "no",
-        MaximumRetryCount: 0,
-      },
+      // AutoRemove: true,
+      // RestartPolicy: {
+      //   Name: "no",
+      //   MaximumRetryCount: 0,
+      // },
       NetworkMode: "dkp-mirror-network",
       PortBindings: {
         "2379/tcp": [

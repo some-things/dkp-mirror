@@ -32,11 +32,11 @@ const apiServerContainer = async () => {
     },
     HostConfig: {
       Binds: ["/Users/dn/Documents/dkp-mirror/scratch/tokens.txt:/tokens.txt"],
-      AutoRemove: true,
-      RestartPolicy: {
-        Name: "no",
-        MaximumRetryCount: 0,
-      },
+      // AutoRemove: true,
+      // RestartPolicy: {
+      //   Name: "no",
+      //   MaximumRetryCount: 0,
+      // },
       NetworkMode: "dkp-mirror-network",
       PortBindings: {
         "6443/tcp": [
