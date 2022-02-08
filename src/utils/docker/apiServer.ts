@@ -30,6 +30,7 @@ const apiServerContainer = async () => {
       "--service-account-issuer=https://kubernetes.default.svc.cluster.local",
       "--service-account-key-file=/var/run/kubernetes/apiserver.key",
       "--service-account-signing-key-file=/var/run/kubernetes/apiserver.key",
+      "--event-ttl=8760h",
       typeof podCIDR === "string" ? `--pod-cidr=${podCIDR}` : "",
       typeof serviceCIDR === "string"
         ? `--service-cluster-ip-range=${serviceCIDR}`
