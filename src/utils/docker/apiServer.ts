@@ -16,6 +16,7 @@ const apiServerContainer = async () => {
   const container = await docker.createContainer({
     name: "dkp-mirror-kube-apiserver",
     Hostname: "dkp-mirror-kube-apiserver",
+    // TODO: set service cidr from bundle
     Cmd: [
       "kube-apiserver",
       "--etcd-servers=http://dkp-mirror-etcd:2379",
@@ -56,7 +57,7 @@ const apiServerContainer = async () => {
   await container.start();
   console.log("Successfully started apiserver container");
 
-  // TODO: Wait for apiserver to be ready
+  // TODO: better readiness check for apiserver
   await sleep(3000);
 
   return container;

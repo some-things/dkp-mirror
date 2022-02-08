@@ -6,94 +6,166 @@ import etcdClient from "../utils/etcd/client";
 import apiServerContainer from "../utils/docker/apiServer";
 
 // TODO: make dynamic
-const bundleRootDir = "./support-bundle-2022-01-25T19_20_12";
+const bundleRootDir = "./support-bundle-2022-02-07T02_30_35";
 const clusterResourcesDir = path.join(bundleRootDir, "cluster-resources");
-const configmapsDir = path.join(bundleRootDir, "configmaps");
+// const configmapsDir = path.join(bundleRootDir, "configmaps");
+const customResourcesDir = path.join(bundleRootDir, "custom-resources");
+const defaultClusterResourceFilesToParse: string[] = [
+  "nodes.json",
+  "namespaces.json",
+  "custom-resource-definitions.json",
+  "storage-classes.json",
+  "pvs.json",
+];
+const defaultNamespacedResourceDirsToParse: string[] = [
+  "cronjobs",
+  "deployments",
+  "events",
+  "ingress",
+  "jobs",
+  // NOTE: untested
+  "limitranges",
+  "pods",
+  "pvcs",
+  "services",
+  "statefulsets",
+];
 
-const parseResourceFiles = () => {
-  console.log("Bundle root dir: ", bundleRootDir);
-  console.log("Cluster resources dir: ", clusterResourcesDir);
-  // !NOTE: Configmaps dir seems somewhat useless
-  console.log("Configmaps dir: ", configmapsDir);
+const parseClusterResources = () => {
+  const clusterResourcesDirFiles = fs.readdirSync(clusterResourcesDir, {
+    withFileTypes: true,
+  });
 
-  const clusterResourceDirFilesToParse: string[] = [
-    "nodes.json",
-    "namespaces.json",
-    "custom-resource-definitions.json",
-  ];
+  // for each file in the cluster-resources dir
+  clusterResourcesDirFiles.forEach((f) => {
+    const fileBasename = path.parse(f.name).name;
+    const kind = getKind(fileBasename);
+    const apiVersion = getApiVersion(kind);
+    const kindPath = getKindPath(fileBasename);
 
-  const resourceFiles = fs.readdirSync(bundleRootDir, { withFileTypes: true });
-  resourceFiles.forEach((f) => {
-    // console.log(
-    //   `File name: ${f.name} --- File type: ${
-    //     f.isDirectory() ? "directory" : "file"
-    //   }`
-    // );
-
-    // console.log(path.join(bundleRootDir, f.name));
-    // console.log(path.join(bundleRootDir, clusterResourcesDir));
-
+    // for each directory in the cluster-resources dir
     if (
       f.isDirectory() &&
-      path.join(bundleRootDir, f.name) === clusterResourcesDir
+      defaultNamespacedResourceDirsToParse.includes(f.name)
     ) {
-      const clusterResourcesDirFiles = fs.readdirSync(
-        path.join(bundleRootDir, f.name),
+      const clusterResourcesDirDirs = fs.readdirSync(
+        path.join(clusterResourcesDir, f.name),
         { withFileTypes: true }
       );
-      clusterResourcesDirFiles.forEach((f) => {
-        if (clusterResourceDirFilesToParse.includes(f.name)) {
-          const fileBasename = path.parse(f.name).name;
-          console.log(
-            `File name: ${f.name} --- File type: ${
-              f.isDirectory() ? "directory" : "file"
-            }`
-          );
+      // for each file in each dir in the cluster-resources dir (namespaced resources)
+      clusterResourcesDirDirs.forEach((clusterResourcesDirDirsFile) => {
+        const namespace = path.parse(clusterResourcesDirDirsFile.name).name;
 
-          // For each file in the cluster resources dir, parse it
-          const resourceFile = fs.readFileSync(
-            path.join(clusterResourcesDir, f.name),
-            "utf8"
-          );
+        const resourceFile = fs.readFileSync(
+          path.join(
+            clusterResourcesDir,
+            f.name,
+            clusterResourcesDirDirsFile.name
+          ),
+          "utf8"
+        );
 
-          const kind = getKind(fileBasename);
-          const apiVersion = getApiVersion(kind);
-          const kindPath = getKindPath(fileBasename);
+        const jsonObjects = JSON.parse(resourceFile);
 
-          const jsonObjects = JSON.parse(resourceFile);
-          // For each json object in the file
-          for (let i = 0; i < jsonObjects.length; i++) {
-            console.log("Kind: ", kind);
-            console.log("apiVersion: ", apiVersion);
+        jsonObjects.forEach((jsonObject: any) => {
+          const name = jsonObject["metadata"]["name"];
+          jsonObject["metadata"]["namespace"] = namespace;
+          jsonObject["kind"] = kind;
+          jsonObject["apiVersion"] = apiVersion;
 
-            // append kind and apiVersion to the json object
-            jsonObjects[i]["kind"] = kind;
-            jsonObjects[i]["apiVersion"] = apiVersion;
+          (async () => {
+            await etcdClient
+              .put(`/registry/${kindPath}/${namespace}/${name}`)
+              .value(JSON.stringify(jsonObject));
+          })();
+        });
+      });
+      // for each file in the cluster-resources dir (cluster resources)
+    } else if (
+      !f.isDirectory() &&
+      defaultClusterResourceFilesToParse.includes(f.name)
+    ) {
+      const resourceFile = fs.readFileSync(
+        path.join(path.join(clusterResourcesDir, f.name)),
+        "utf8"
+      );
+      const jsonObjects = JSON.parse(resourceFile);
 
-            console.log(
-              `etcdctl put /registry/${kindPath}${jsonObjects[i]["metadata"]["name"]} ${jsonObjects[i]}`
-            );
+      jsonObjects.forEach((jsonObject: any) => {
+        const name = jsonObject["metadata"]["name"];
+        jsonObject["kind"] = kind;
+        jsonObject["apiVersion"] = apiVersion;
 
-            (async () => {
-              await etcdClient
-                .put(
-                  `/registry/${kindPath}${jsonObjects[i]["metadata"]["name"]}`
-                )
-                .value(JSON.stringify(jsonObjects[i]));
-            })();
-          }
-        }
+        (async () => {
+          await etcdClient
+            .put(`/registry/${kindPath}/${name}`)
+            .value(JSON.stringify(jsonObject));
+        })();
       });
     }
-
-    // const resourceFile = fs.readFileSync(
-    //   path.join(bundleRootDir, f),
-    //   "utf8"
-    // );
-    // console.log(resourceFile);
   });
 };
 
+const parseCustomResources = () => {
+  const customResourcesDirFiles = fs.readdirSync(customResourcesDir, {
+    withFileTypes: true,
+  });
+
+  customResourcesDirFiles.forEach((f) => {
+    // for each file in each dir in the custom-resources dir (namespaced resources)
+    if (f.isDirectory()) {
+      const apiResource = f.name;
+      const customResourceDirFiles = fs.readdirSync(
+        path.join(customResourcesDir, f.name),
+        { withFileTypes: true }
+      );
+
+      customResourceDirFiles.forEach((customResourceDirFile) => {
+        const namespace = path.parse(customResourceDirFile.name).name;
+
+        // TODO: refactor this so we can just pass around parsing this function for any resource file
+        const resourceFile = fs.readFileSync(
+          path.join(customResourcesDir, f.name, customResourceDirFile.name),
+          "utf8"
+        );
+
+        const jsonObjects = JSON.parse(resourceFile);
+
+        jsonObjects.forEach((jsonObject: any) => {
+          const name = jsonObject["metadata"]["name"];
+          jsonObject["metadata"]["namespace"] = namespace;
+
+          (async () => {
+            await etcdClient
+              .put(`/registry/${apiResource}/${namespace}/${name}`)
+              .value(JSON.stringify(jsonObject));
+          })();
+        });
+      });
+      // for each file in the custom-resources dir (cluster resources)
+    } else {
+      const apiResource = path.parse(f.name).name;
+      const resourceFile = fs.readFileSync(
+        path.join(customResourcesDir, f.name),
+        "utf8"
+      );
+
+      const jsonObjects = JSON.parse(resourceFile);
+
+      jsonObjects.forEach((jsonObject: any) => {
+        const name = jsonObject["metadata"]["name"];
+
+        (async () => {
+          await etcdClient
+            .put(`/registry/${apiResource}/${name}`)
+            .value(JSON.stringify(jsonObject));
+        })();
+      });
+    }
+  });
+};
+
+// TODO: use Kind instead of filename
 const getKindPath = (filename: string): string => {
   let kindPath: string;
 
@@ -110,23 +182,26 @@ const getKindPath = (filename: string): string => {
     case "leases":
       kindPath = "leases/kube-node-lease/";
       break;
-    case "ingresses":
+    case "ingress":
       kindPath = "ingress/";
       break;
     case "podsecuritypolicies":
       kindPath = "podsecuritypolicy/";
       break;
-    case "storageclass":
+    case "storage-classes":
       kindPath = "storageclasses/";
       break;
     case "namespace":
       kindPath = "namespaces/";
       break;
-    case "persistentvolume":
+    case "pvs":
       kindPath = "persistentvolumes/";
       break;
     case "custom-resource-definitions":
       kindPath = "apiextensions.k8s.io/customresourcedefinitions/";
+      break;
+    case "pvcs":
+      kindPath = "persistentvolumeclaims/";
       break;
     default:
       kindPath = `${filename}/`;
@@ -154,6 +229,36 @@ const getKind = (filename: string): string => {
       break;
     case "custom-resource-definitions":
       kind = "CustomResourceDefinition";
+      break;
+    case "cronjobs":
+      kind = "CronJob";
+      break;
+    case "deployments":
+      kind = "Deployment";
+      break;
+    case "events":
+      kind = "Event";
+      break;
+    case "ingress":
+      kind = "Ingress";
+      break;
+    case "jobs":
+      kind = "Job";
+      break;
+    case "limitranges":
+      kind = "LimitRange";
+      break;
+    case "pods":
+      kind = "Pod";
+      break;
+    case "pvcs":
+      kind = "PersistentVolumeClaim";
+      break;
+    case "services":
+      kind = "Service";
+      break;
+    case "statefulsets":
+      kind = "StatefulSet";
       break;
     default:
       kind = filename;
@@ -192,8 +297,9 @@ const getApiVersion = (kind: string): string => {
 const up = async () => {
   await dockerNetwork();
   await etcdContainer();
+  parseClusterResources();
+  parseCustomResources();
   await apiServerContainer();
-  parseResourceFiles();
 };
 
 export default up;

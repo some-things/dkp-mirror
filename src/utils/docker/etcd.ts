@@ -1,4 +1,5 @@
 import { Container } from "dockerode";
+import { etcdImage } from "../../constants";
 import sleep from "../sleep";
 import dockerClient from "./client";
 
@@ -6,7 +7,7 @@ const docker = dockerClient;
 
 const etcdContainer = async (): Promise<Container> => {
   console.log("Pulling etcd image");
-  const pullStream = await docker.pull("k8s.gcr.io/etcd:3.4.13-0");
+  const pullStream = await docker.pull(etcdImage);
 
   console.log("Waiting for etcd image pull to complete");
   await new Promise((res) => docker.modem.followProgress(pullStream, res));
@@ -45,7 +46,7 @@ const etcdContainer = async (): Promise<Container> => {
         ],
       },
     },
-    Image: "k8s.gcr.io/etcd:3.4.13-0",
+    Image: etcdImage,
   });
   console.log("Successfully created etcd container");
 
@@ -53,7 +54,7 @@ const etcdContainer = async (): Promise<Container> => {
   await container.start();
   console.log("Successfully started etcd container");
 
-  // TODO: Wait for etcd to be ready
+  // TODO: better readiness check for etcd
   await sleep(3000);
 
   return container;
