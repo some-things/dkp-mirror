@@ -4,12 +4,9 @@ import dockerNetwork from "../utils/docker/network";
 import etcdContainer from "../utils/docker/etcd";
 import etcdClient from "../utils/etcd/client";
 import apiServerContainer from "../utils/docker/apiServer";
+import { clusterResourcesDir, customResourcesDir } from "../constants";
 
 // TODO: make dynamic
-const bundleRootDir = "./support-bundle-2022-02-07T02_30_35";
-const clusterResourcesDir = path.join(bundleRootDir, "cluster-resources");
-// const configmapsDir = path.join(bundleRootDir, "configmaps");
-const customResourcesDir = path.join(bundleRootDir, "custom-resources");
 const defaultClusterResourceFilesToParse: string[] = [
   "nodes.json",
   "namespaces.json",
@@ -102,9 +99,11 @@ const parseClusterResources = () => {
           jsonObject["spec"]["conversion"]["strategy"] = "None";
         }
 
+        console.log(`etcdctl put /registry/${kindPath}${name}`);
+
         (async () => {
           await etcdClient
-            .put(`/registry/${kindPath}/${name}`)
+            .put(`/registry/${kindPath}${name}`)
             .value(JSON.stringify(jsonObject));
         })();
       });
@@ -144,10 +143,6 @@ const parseCustomResources = () => {
           const name = jsonObject["metadata"]["name"];
           jsonObject["metadata"]["namespace"] = namespace;
 
-          console.log(
-            `etcdctl put /registry/${apiGroup}/${apiResource}/${namespace}/${name}`
-          );
-
           (async () => {
             await etcdClient
               .put(`/registry/${apiGroup}/${apiResource}/${namespace}/${name}`)
@@ -167,8 +162,6 @@ const parseCustomResources = () => {
 
       jsonObjects.forEach((jsonObject: any) => {
         const name = jsonObject["metadata"]["name"];
-
-        console.log(`etcdctl put /registry/${apiGroup}/${apiResource}/${name}`);
 
         (async () => {
           await etcdClient
