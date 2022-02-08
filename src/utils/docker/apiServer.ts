@@ -21,6 +21,7 @@ const apiServerContainer = async () => {
       "kube-apiserver",
       "--etcd-servers=http://dkp-mirror-etcd:2379",
       "--authorization-mode=Node,RBAC",
+      "--disable-admission-plugins=MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ImagePolicyWebhook,MutatingAdmissionWebhook,ValidatingAdmissionWebhook",
       "--token-auth-file=/tokens.txt",
       // since these 3 SA flags are required, we just pass random and non-functional values
       "--service-account-issuer=https://kubernetes.default.svc.cluster.local",

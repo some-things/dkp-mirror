@@ -95,6 +95,12 @@ const parseClusterResources = () => {
         const name = jsonObject["metadata"]["name"];
         jsonObject["kind"] = kind;
         jsonObject["apiVersion"] = apiVersion;
+        // we do this to remove webhook configuration from crds, which appeared to cause apiserver panics
+        // TODO: investigate better options
+        if (kind == "CustomResourceDefinition") {
+          jsonObject["spec"]["conversion"] = {};
+          jsonObject["spec"]["conversion"]["strategy"] = "None";
+        }
 
         (async () => {
           await etcdClient
@@ -112,9 +118,12 @@ const parseCustomResources = () => {
   });
 
   customResourcesDirFiles.forEach((f) => {
+    const apiResource = f.name.split(".")[0];
+
     // for each file in each dir in the custom-resources dir (namespaced resources)
     if (f.isDirectory()) {
-      const apiResource = f.name;
+      const apiGroup = f.name.split(".").slice(1).join(".");
+
       const customResourceDirFiles = fs.readdirSync(
         path.join(customResourcesDir, f.name),
         { withFileTypes: true }
@@ -135,16 +144,20 @@ const parseCustomResources = () => {
           const name = jsonObject["metadata"]["name"];
           jsonObject["metadata"]["namespace"] = namespace;
 
+          console.log(
+            `etcdctl put /registry/${apiGroup}/${apiResource}/${namespace}/${name}`
+          );
+
           (async () => {
             await etcdClient
-              .put(`/registry/${apiResource}/${namespace}/${name}`)
+              .put(`/registry/${apiGroup}/${apiResource}/${namespace}/${name}`)
               .value(JSON.stringify(jsonObject));
           })();
         });
       });
       // for each file in the custom-resources dir (cluster resources)
     } else {
-      const apiResource = path.parse(f.name).name;
+      const apiGroup = f.name.split(".").slice(1, -1).join(".");
       const resourceFile = fs.readFileSync(
         path.join(customResourcesDir, f.name),
         "utf8"
@@ -155,9 +168,11 @@ const parseCustomResources = () => {
       jsonObjects.forEach((jsonObject: any) => {
         const name = jsonObject["metadata"]["name"];
 
+        console.log(`etcdctl put /registry/${apiGroup}/${apiResource}/${name}`);
+
         (async () => {
           await etcdClient
-            .put(`/registry/${apiResource}/${name}`)
+            .put(`/registry/${apiGroup}/${apiResource}/${name}`)
             .value(JSON.stringify(jsonObject));
         })();
       });
@@ -165,7 +180,7 @@ const parseCustomResources = () => {
   });
 };
 
-// TODO: use Kind instead of filename
+// TODO: use Kind instead of filename?
 const getKindPath = (filename: string): string => {
   let kindPath: string;
 
