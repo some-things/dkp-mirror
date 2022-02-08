@@ -2,9 +2,13 @@
   "name": "dkp-mirror",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "bin": {
+    "dkp-mirror": "dist/index.js"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "run": "docker rm -f dkp-mirror-etcd dkp-mirror-kube-apiserver; time ts-node src/index.ts up |tee  debug.log"
   },
   "repository": {
     "type": "git",
@@ -20,7 +24,8 @@
   "devDependencies": {
     "@types/commander": "^2.12.2",
     "@types/dockerode": "^3.3.1",
-    "@types/node": "^17.0.14",
+    "@types/node": "^17.0.16",
+    "eslint": "^8.8.0",
     "typescript": "^4.5.5"
   },
   "dependencies": {
