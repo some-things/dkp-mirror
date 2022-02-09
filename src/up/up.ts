@@ -51,41 +51,45 @@ const parseClusterResources = () => {
       );
       // for each file in each dir in the cluster-resources dir (namespaced resources)
       clusterResourcesDirDirs.forEach((clusterResourcesDirDirsFile) => {
-        const namespace = path.parse(clusterResourcesDirDirsFile.name).name;
+        if (path.extname(clusterResourcesDirDirsFile.name) === ".json") {
+          const namespace = path.parse(clusterResourcesDirDirsFile.name).name;
 
-        const resourceFile = fs.readFileSync(
-          path.join(
-            clusterResourcesDir,
-            f.name,
-            clusterResourcesDirDirsFile.name
-          ),
-          "utf8"
-        );
+          const resourceFile = fs.readFileSync(
+            path.join(
+              clusterResourcesDir,
+              f.name,
+              clusterResourcesDirDirsFile.name
+            ),
+            "utf8"
+          );
 
-        const jsonObjects = JSON.parse(resourceFile);
+          const jsonObjects = JSON.parse(resourceFile);
 
-        jsonObjects.forEach((jsonObject: any) => {
-          const name = jsonObject["metadata"]["name"];
-          jsonObject["metadata"]["namespace"] = namespace;
-          jsonObject["kind"] = kind;
-          jsonObject["apiVersion"] = apiVersion;
+          jsonObjects.forEach((jsonObject: any) => {
+            const name = jsonObject["metadata"]["name"];
+            jsonObject["metadata"]["namespace"] = namespace;
+            jsonObject["kind"] = kind;
+            jsonObject["apiVersion"] = apiVersion;
 
-          (async () => {
-            await etcdClient
-              .put(`/registry/${kindPath}/${namespace}/${name}`)
-              .value(JSON.stringify(jsonObject));
-          })();
-        });
+            (async () => {
+              await etcdClient
+                .put(`/registry/${kindPath}/${namespace}/${name}`)
+                .value(JSON.stringify(jsonObject));
+            })();
+          });
+        }
       });
       // for each file in the cluster-resources dir (cluster resources)
     } else if (
       !f.isDirectory() &&
-      defaultClusterResourceFilesToParse.includes(f.name)
+      defaultClusterResourceFilesToParse.includes(f.name) &&
+      path.extname(f.name) === ".json"
     ) {
       const resourceFile = fs.readFileSync(
         path.join(path.join(clusterResourcesDir, f.name)),
         "utf8"
       );
+
       const jsonObjects = JSON.parse(resourceFile);
 
       jsonObjects.forEach((jsonObject: any) => {
@@ -98,8 +102,6 @@ const parseClusterResources = () => {
           jsonObject["spec"]["conversion"] = {};
           jsonObject["spec"]["conversion"]["strategy"] = "None";
         }
-
-        console.log(`etcdctl put /registry/${kindPath}${name}`);
 
         (async () => {
           await etcdClient
@@ -129,29 +131,33 @@ const parseCustomResources = () => {
       );
 
       customResourceDirFiles.forEach((customResourceDirFile) => {
-        const namespace = path.parse(customResourceDirFile.name).name;
+        if (path.extname(customResourceDirFile.name) === ".json") {
+          const namespace = path.parse(customResourceDirFile.name).name;
 
-        // TODO: refactor this so we can just pass around parsing this function for any resource file
-        const resourceFile = fs.readFileSync(
-          path.join(customResourcesDir, f.name, customResourceDirFile.name),
-          "utf8"
-        );
+          // TODO: refactor this so we can just pass around parsing this function for any resource file
+          const resourceFile = fs.readFileSync(
+            path.join(customResourcesDir, f.name, customResourceDirFile.name),
+            "utf8"
+          );
 
-        const jsonObjects = JSON.parse(resourceFile);
+          const jsonObjects = JSON.parse(resourceFile);
 
-        jsonObjects.forEach((jsonObject: any) => {
-          const name = jsonObject["metadata"]["name"];
-          jsonObject["metadata"]["namespace"] = namespace;
+          jsonObjects.forEach((jsonObject: any) => {
+            const name = jsonObject["metadata"]["name"];
+            jsonObject["metadata"]["namespace"] = namespace;
 
-          (async () => {
-            await etcdClient
-              .put(`/registry/${apiGroup}/${apiResource}/${namespace}/${name}`)
-              .value(JSON.stringify(jsonObject));
-          })();
-        });
+            (async () => {
+              await etcdClient
+                .put(
+                  `/registry/${apiGroup}/${apiResource}/${namespace}/${name}`
+                )
+                .value(JSON.stringify(jsonObject));
+            })();
+          });
+        }
       });
       // for each file in the custom-resources dir (cluster resources)
-    } else {
+    } else if (!f.isDirectory() && path.extname(f.name) === ".json") {
       const apiGroup = f.name.split(".").slice(1, -1).join(".");
       const resourceFile = fs.readFileSync(
         path.join(customResourcesDir, f.name),
@@ -278,7 +284,7 @@ const getKind = (filename: string): string => {
 
 const getApiVersion = (kind: string): string => {
   // TODO: check case where it is possible to have multiple apiGroupVersions/apiVersions for a single kind name
-  // totally possible that there will be CRs that use the same "kind name" (e.g.,  "node)
+  // totally possible that there will be CRs that use the same "kind name" (e.g.,  "node")
   // for CRs, we can just get the apiVersion from the object
   // however, we may have to hardcode some apiVersions for "default" resources (e.g., non-CRs)
   const apiResourceFile = fs.readFileSync(
