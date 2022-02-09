@@ -81,7 +81,7 @@ const parseClusterResources = () => {
       });
       // for each file in the cluster-resources dir (cluster resources)
     } else if (
-      !f.isDirectory() &&
+      f.isFile() &&
       defaultClusterResourceFilesToParse.includes(f.name) &&
       path.extname(f.name) === ".json"
     ) {
@@ -157,7 +157,7 @@ const parseCustomResources = () => {
         }
       });
       // for each file in the custom-resources dir (cluster resources)
-    } else if (!f.isDirectory() && path.extname(f.name) === ".json") {
+    } else if (f.isFile() && path.extname(f.name) === ".json") {
       const apiGroup = f.name.split(".").slice(1, -1).join(".");
       const resourceFile = fs.readFileSync(
         path.join(customResourcesDir, f.name),
