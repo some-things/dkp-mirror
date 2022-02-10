@@ -4,7 +4,7 @@ import dockerNetwork from "../utils/docker/network";
 import etcdContainer from "../utils/docker/etcd";
 import etcdClient from "../utils/etcd/client";
 import apiServerContainer from "../utils/docker/apiServer";
-import { clusterResourcesDir, customResourcesDir } from "../constants";
+import { clusterResourcesDir, customResourcesDir } from "../utils/directories";
 
 // TODO: make dynamic
 const defaultClusterResourceFilesToParse: string[] = [
@@ -20,7 +20,7 @@ const defaultNamespacedResourceDirsToParse: string[] = [
   "events",
   "ingress",
   "jobs",
-  // NOTE: untested
+  // NOTE: limitranges untested
   "limitranges",
   "pods",
   "pvcs",
@@ -28,6 +28,7 @@ const defaultNamespacedResourceDirsToParse: string[] = [
   "statefulsets",
 ];
 
+// TODO: too much repeated code... refactor this so we can just pass around parsing this for any resource
 const parseClusterResources = () => {
   const clusterResourcesDirFiles = fs.readdirSync(clusterResourcesDir, {
     withFileTypes: true,
@@ -134,7 +135,6 @@ const parseCustomResources = () => {
         if (path.extname(customResourceDirFile.name) === ".json") {
           const namespace = path.parse(customResourceDirFile.name).name;
 
-          // TODO: refactor this so we can just pass around parsing this function for any resource file
           const resourceFile = fs.readFileSync(
             path.join(customResourcesDir, f.name, customResourceDirFile.name),
             "utf8"
@@ -309,11 +309,16 @@ const getApiVersion = (kind: string): string => {
 };
 
 const up = async () => {
+  console.log("Starting DKP mirror!");
   await dockerNetwork();
   await etcdContainer();
   parseClusterResources();
   parseCustomResources();
   await apiServerContainer();
+  console.log("Successfully started DKP mirror!");
+  console.log(`
+    To access the DKP mirror, visit run:
+    export KUBECONFIG=kubeconfig.mirror`);
 };
 
 export default up;
