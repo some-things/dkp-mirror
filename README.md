@@ -14,5 +14,5 @@
 ## Installation
 
 ```shell
-npm -i -g https://github.com/some-things/dkp-mirror
+npm i -g https://github.com/some-things/dkp-mirror
 ```
