@@ -1,16 +1,15 @@
-import path from "path";
-import os from "os";
+import { join } from "path";
+import { homedir } from "os";
 
-export const homeDir = os.homedir();
+export const homeDir = homedir();
 export const currentWorkingDir = process.cwd();
-export const bundleRootDir = "./support-bundle-2022-01-28T13_08_07";
-export const clusterResourcesDir = path.join(
-  bundleRootDir,
-  "cluster-resources"
-);
-export const configmapsDir = path.join(bundleRootDir, "configmaps");
-export const customResourcesDir = path.join(bundleRootDir, "custom-resources");
-export const defaultExtractBundleDirectory = path.join(
+export const bundleRootDir = process.env.DKP_MIRROR_BUNDLE_ROOT_DIR
+  ? process.env.DKP_MIRROR_BUNDLE_ROOT_DIR
+  : currentWorkingDir;
+export const clusterResourcesDir = join(bundleRootDir, "cluster-resources");
+export const configmapsDir = join(bundleRootDir, "configmaps");
+export const customResourcesDir = join(bundleRootDir, "custom-resources");
+export const defaultExtractBundleDirectory = join(
   homeDir,
   "Documents/logs/tickets"
 );

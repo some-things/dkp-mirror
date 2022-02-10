@@ -23,8 +23,8 @@ program
     `${defaultExtractBundleDirectory}`
   )
   .option("-t, --ticket-id [ticket-id]", "Ticket ID")
-  .action((bundle, { outputDir, ticketId }) => {
-    extract(bundle, outputDir, ticketId);
+  .action(async (bundle, { outputDir, ticketId }) => {
+    await extract(bundle, outputDir, ticketId);
   });
 
 program
