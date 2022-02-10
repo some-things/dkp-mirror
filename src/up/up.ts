@@ -1,12 +1,23 @@
-import fs from "fs";
-import path from "path";
-import dockerNetwork from "../utils/docker/network";
-import etcdContainer from "../utils/docker/etcd";
-import etcdClient from "../utils/etcd/client";
+import { readdirSync, readFileSync } from "fs";
+import { mkdir, writeFile } from "fs/promises";
+import { extname, join, parse } from "path";
+import {
+  APISERVER_TOKEN_FILE_DATA,
+  APISERVER_TOKEN_FILE_NAME,
+  ARTIFACTS_DIR_NAME,
+  KUBECONFIG_DATA,
+  KUBECONFIG_FILE_NAME,
+} from "../constants";
+import {
+  clusterResourcesDir,
+  currentWorkingDir,
+  customResourcesDir,
+} from "../utils/directories";
 import apiServerContainer from "../utils/docker/apiServer";
-import { clusterResourcesDir, customResourcesDir } from "../utils/directories";
+import etcdContainer from "../utils/docker/etcd";
+import dockerNetwork from "../utils/docker/network";
+import etcdClient from "../utils/etcd/client";
 
-// TODO: make dynamic
 const defaultClusterResourceFilesToParse: string[] = [
   "nodes.json",
   "namespaces.json",
@@ -30,13 +41,13 @@ const defaultNamespacedResourceDirsToParse: string[] = [
 
 // TODO: too much repeated code... refactor this so we can just pass around parsing this for any resource
 const parseClusterResources = () => {
-  const clusterResourcesDirFiles = fs.readdirSync(clusterResourcesDir, {
+  const clusterResourcesDirFiles = readdirSync(clusterResourcesDir, {
     withFileTypes: true,
   });
 
   // for each file in the cluster-resources dir
   clusterResourcesDirFiles.forEach((f) => {
-    const fileBasename = path.parse(f.name).name;
+    const fileBasename = parse(f.name).name;
     const kind = getKind(fileBasename);
     const apiVersion = getApiVersion(kind);
     const kindPath = getKindPath(fileBasename);
@@ -46,21 +57,17 @@ const parseClusterResources = () => {
       f.isDirectory() &&
       defaultNamespacedResourceDirsToParse.includes(f.name)
     ) {
-      const clusterResourcesDirDirs = fs.readdirSync(
-        path.join(clusterResourcesDir, f.name),
+      const clusterResourcesDirDirs = readdirSync(
+        join(clusterResourcesDir, f.name),
         { withFileTypes: true }
       );
       // for each file in each dir in the cluster-resources dir (namespaced resources)
       clusterResourcesDirDirs.forEach((clusterResourcesDirDirsFile) => {
-        if (path.extname(clusterResourcesDirDirsFile.name) === ".json") {
-          const namespace = path.parse(clusterResourcesDirDirsFile.name).name;
+        if (extname(clusterResourcesDirDirsFile.name) === ".json") {
+          const namespace = parse(clusterResourcesDirDirsFile.name).name;
 
-          const resourceFile = fs.readFileSync(
-            path.join(
-              clusterResourcesDir,
-              f.name,
-              clusterResourcesDirDirsFile.name
-            ),
+          const resourceFile = readFileSync(
+            join(clusterResourcesDir, f.name, clusterResourcesDirDirsFile.name),
             "utf8"
           );
 
@@ -84,10 +91,10 @@ const parseClusterResources = () => {
     } else if (
       f.isFile() &&
       defaultClusterResourceFilesToParse.includes(f.name) &&
-      path.extname(f.name) === ".json"
+      extname(f.name) === ".json"
     ) {
-      const resourceFile = fs.readFileSync(
-        path.join(path.join(clusterResourcesDir, f.name)),
+      const resourceFile = readFileSync(
+        join(join(clusterResourcesDir, f.name)),
         "utf8"
       );
 
@@ -115,7 +122,7 @@ const parseClusterResources = () => {
 };
 
 const parseCustomResources = () => {
-  const customResourcesDirFiles = fs.readdirSync(customResourcesDir, {
+  const customResourcesDirFiles = readdirSync(customResourcesDir, {
     withFileTypes: true,
   });
 
@@ -126,17 +133,17 @@ const parseCustomResources = () => {
     if (f.isDirectory()) {
       const apiGroup = f.name.split(".").slice(1).join(".");
 
-      const customResourceDirFiles = fs.readdirSync(
-        path.join(customResourcesDir, f.name),
+      const customResourceDirFiles = readdirSync(
+        join(customResourcesDir, f.name),
         { withFileTypes: true }
       );
 
       customResourceDirFiles.forEach((customResourceDirFile) => {
-        if (path.extname(customResourceDirFile.name) === ".json") {
-          const namespace = path.parse(customResourceDirFile.name).name;
+        if (extname(customResourceDirFile.name) === ".json") {
+          const namespace = parse(customResourceDirFile.name).name;
 
-          const resourceFile = fs.readFileSync(
-            path.join(customResourcesDir, f.name, customResourceDirFile.name),
+          const resourceFile = readFileSync(
+            join(customResourcesDir, f.name, customResourceDirFile.name),
             "utf8"
           );
 
@@ -157,10 +164,10 @@ const parseCustomResources = () => {
         }
       });
       // for each file in the custom-resources dir (cluster resources)
-    } else if (f.isFile() && path.extname(f.name) === ".json") {
+    } else if (f.isFile() && extname(f.name) === ".json") {
       const apiGroup = f.name.split(".").slice(1, -1).join(".");
-      const resourceFile = fs.readFileSync(
-        path.join(customResourcesDir, f.name),
+      const resourceFile = readFileSync(
+        join(customResourcesDir, f.name),
         "utf8"
       );
 
@@ -287,8 +294,8 @@ const getApiVersion = (kind: string): string => {
   // totally possible that there will be CRs that use the same "kind name" (e.g.,  "node")
   // for CRs, we can just get the apiVersion from the object
   // however, we may have to hardcode some apiVersions for "default" resources (e.g., non-CRs)
-  const apiResourceFile = fs.readFileSync(
-    path.join(clusterResourcesDir, "resources.json"),
+  const apiResourceFile = readFileSync(
+    join(clusterResourcesDir, "resources.json"),
     "utf8"
   );
   const apiResourcesJson = JSON.parse(apiResourceFile);
@@ -308,17 +315,46 @@ const getApiVersion = (kind: string): string => {
   return apiVersion;
 };
 
+const createArtifactsDir = async () => {
+  console.log("Creating artifacts directory");
+  await mkdir(join(currentWorkingDir, ARTIFACTS_DIR_NAME));
+};
+
+const writeApiserverTokenFile = async () => {
+  console.log("Writing kube-apiserver token file");
+  await writeFile(
+    join(currentWorkingDir, ARTIFACTS_DIR_NAME, APISERVER_TOKEN_FILE_NAME),
+    APISERVER_TOKEN_FILE_DATA
+  );
+};
+
+const writeKubeconfig = async () => {
+  console.log("Writing kubeconfig");
+  await writeFile(
+    join(currentWorkingDir, ARTIFACTS_DIR_NAME, KUBECONFIG_FILE_NAME),
+    KUBECONFIG_DATA
+  );
+};
+
 const up = async () => {
   console.log("Starting DKP mirror!");
   await dockerNetwork();
   await etcdContainer();
   parseClusterResources();
   parseCustomResources();
+  await createArtifactsDir();
+  await writeApiserverTokenFile();
   await apiServerContainer();
+  await writeKubeconfig();
   console.log("Successfully started DKP mirror!");
   console.log(`
-    To access the DKP mirror, visit run:
-    export KUBECONFIG=kubeconfig.mirror`);
+    To access the DKP mirror, execute:
+
+    export KUBECONFIG=${join(
+      currentWorkingDir,
+      ARTIFACTS_DIR_NAME,
+      KUBECONFIG_FILE_NAME
+    )}`);
 };
 
 export default up;

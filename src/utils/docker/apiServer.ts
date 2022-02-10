@@ -1,19 +1,25 @@
 import sleep from "../sleep";
 import dockerClient from "./client";
-import { apiServerImage } from "../../constants";
+import {
+  APISERVER_IMAGE,
+  APISERVER_TOKEN_FILE_NAME,
+  ARTIFACTS_DIR_NAME,
+} from "../../constants";
+import { join } from "path";
+import { currentWorkingDir } from "../directories";
+import getServiceSubnet from "../cluster/getServiceSubnet";
 
 const docker = dockerClient;
 
 const apiServerContainer = async () => {
   console.log("Pulling apiserver image");
-  const pullStream = await docker.pull(apiServerImage);
+  const pullStream = await docker.pull(APISERVER_IMAGE);
 
   console.log("Waiting for apiserver image pull to complete");
   await new Promise((res) => docker.modem.followProgress(pullStream, res));
   console.log("Successfully pulled apiserver image");
 
-  const podCIDR: string | undefined = undefined;
-  const serviceCIDR: string | undefined = undefined;
+  const serviceSubnet: string | undefined = await getServiceSubnet();
 
   console.log("Creating apiserver container");
   const container = await docker.createContainer({
@@ -31,17 +37,23 @@ const apiServerContainer = async () => {
       "--service-account-key-file=/var/run/kubernetes/apiserver.key",
       "--service-account-signing-key-file=/var/run/kubernetes/apiserver.key",
       "--event-ttl=8760h",
-      typeof podCIDR === "string" ? `--pod-cidr=${podCIDR}` : "",
-      typeof serviceCIDR === "string"
-        ? `--service-cluster-ip-range=${serviceCIDR}`
+      typeof serviceSubnet === "string"
+        ? `--service-cluster-ip-range=${serviceSubnet}`
         : "",
+      // typeof podSubnet === "string" ? `--pod-cidr=${podSubnet}` : "",
     ],
     WorkingDir: "/",
     ExposedPorts: {
       "6443/tcp": {},
     },
     HostConfig: {
-      Binds: ["/Users/dn/Documents/dkp-mirror/scratch/tokens.txt:/tokens.txt"],
+      Binds: [
+        `${join(
+          currentWorkingDir,
+          ARTIFACTS_DIR_NAME,
+          APISERVER_TOKEN_FILE_NAME
+        )}:/tokens.txt`,
+      ],
       // AutoRemove: true,
       // RestartPolicy: {
       //   Name: "no",
@@ -57,7 +69,7 @@ const apiServerContainer = async () => {
         ],
       },
     },
-    Image: apiServerImage,
+    Image: APISERVER_IMAGE,
   });
 
   console.log("Successfully created apiserver container");

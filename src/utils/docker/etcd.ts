@@ -1,5 +1,5 @@
 import { Container } from "dockerode";
-import { etcdImage } from "../../constants";
+import { ETCD_IMAGE } from "../../constants";
 import sleep from "../sleep";
 import dockerClient from "./client";
 
@@ -7,7 +7,7 @@ const docker = dockerClient;
 
 const etcdContainer = async (): Promise<Container> => {
   console.log("Pulling etcd image");
-  const pullStream = await docker.pull(etcdImage);
+  const pullStream = await docker.pull(ETCD_IMAGE);
 
   console.log("Waiting for etcd image pull to complete");
   await new Promise((res) => docker.modem.followProgress(pullStream, res));
@@ -46,7 +46,7 @@ const etcdContainer = async (): Promise<Container> => {
         ],
       },
     },
-    Image: etcdImage,
+    Image: ETCD_IMAGE,
   });
   console.log("Successfully created etcd container");
 
