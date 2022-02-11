@@ -2,9 +2,9 @@
   "name": "dkp-mirror",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.js",
+  "main": "./dist/index.js",
   "bin": {
-    "dkp-mirror": "dist/index.js"
+    "dkp-mirror": "./bin/cli.js"
   },
   "private": true,
   "scripts": {
