@@ -1,22 +1,19 @@
-import { readdirSync, readFileSync } from "fs";
-import { mkdir, writeFile } from "fs/promises";
-import { extname, join, parse } from "path";
+import { readdirSync, readFileSync } from 'fs';
+import { mkdir, writeFile } from 'fs/promises';
+import { extname, join, parse } from 'path';
+
 import {
   APISERVER_TOKEN_FILE_DATA,
   APISERVER_TOKEN_FILE_NAME,
   ARTIFACTS_DIR_NAME,
-  KUBECONFIG_DATA,
+  KUBECONFIG_FILE_DATA,
   KUBECONFIG_FILE_NAME,
-} from "../constants";
-import {
-  clusterResourcesDir,
-  currentWorkingDir,
-  customResourcesDir,
-} from "../utils/directories";
-import apiServerContainer from "../utils/docker/apiServer";
-import etcdContainer from "../utils/docker/etcd";
-import dockerNetwork from "../utils/docker/network";
-import etcdClient from "../utils/etcd/client";
+} from '../constants';
+import { clusterResourcesDir, currentWorkingDir, customResourcesDir } from '../utils/directories';
+import apiServerContainer from '../utils/docker/apiServer';
+import etcdContainer from '../utils/docker/etcd';
+import dockerNetwork from '../utils/docker/network';
+import etcdClient from '../utils/etcd/client';
 
 const defaultClusterResourceFilesToParse: string[] = [
   "nodes.json",
@@ -81,7 +78,7 @@ const parseClusterResources = () => {
 
             (async () => {
               await etcdClient
-                .put(`/registry/${kindPath}/${namespace}/${name}`)
+                .put(`/registry/${kindPath}${namespace}/${name}`)
                 .value(JSON.stringify(jsonObject));
             })();
           });
@@ -332,7 +329,7 @@ const writeKubeconfig = async () => {
   console.log("Writing kubeconfig");
   await writeFile(
     join(currentWorkingDir, ARTIFACTS_DIR_NAME, KUBECONFIG_FILE_NAME),
-    KUBECONFIG_DATA
+    KUBECONFIG_FILE_DATA
   );
 };
 

@@ -6,7 +6,7 @@ export const APISERVER_TOKEN_FILE_DATA = `
 mirror,mirror,mirror,system:masters
 `;
 export const KUBECONFIG_FILE_NAME = "kubeconfig.mirror";
-export const KUBECONFIG_DATA = `
+export const KUBECONFIG_FILE_DATA = `
 apiVersion: v1
 kind: Config
 current-context: mirror

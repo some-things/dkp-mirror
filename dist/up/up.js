@@ -64,7 +64,7 @@ const parseClusterResources = () => {
                         jsonObject["apiVersion"] = apiVersion;
                         (() => __awaiter(void 0, void 0, void 0, function* () {
                             yield client_1.default
-                                .put(`/registry/${kindPath}/${namespace}/${name}`)
+                                .put(`/registry/${kindPath}${namespace}/${name}`)
                                 .value(JSON.stringify(jsonObject));
                         }))();
                     });
@@ -255,7 +255,7 @@ const writeApiserverTokenFile = () => __awaiter(void 0, void 0, void 0, function
 });
 const writeKubeconfig = () => __awaiter(void 0, void 0, void 0, function* () {
     console.log("Writing kubeconfig");
-    yield (0, promises_1.writeFile)((0, path_1.join)(directories_1.currentWorkingDir, constants_1.ARTIFACTS_DIR_NAME, constants_1.KUBECONFIG_FILE_NAME), constants_1.KUBECONFIG_DATA);
+    yield (0, promises_1.writeFile)((0, path_1.join)(directories_1.currentWorkingDir, constants_1.ARTIFACTS_DIR_NAME, constants_1.KUBECONFIG_FILE_NAME), constants_1.KUBECONFIG_FILE_DATA);
 });
 const up = () => __awaiter(void 0, void 0, void 0, function* () {
     console.log("Starting DKP mirror!");

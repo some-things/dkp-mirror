@@ -12,12 +12,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const path_1 = require("path");
+const constants_1 = require("../../constants");
+const getServiceSubnet_1 = __importDefault(require("../cluster/getServiceSubnet"));
+const directories_1 = require("../directories");
 const sleep_1 = __importDefault(require("../sleep"));
 const client_1 = __importDefault(require("./client"));
-const constants_1 = require("../../constants");
-const path_1 = require("path");
-const directories_1 = require("../directories");
-const getServiceSubnet_1 = __importDefault(require("../cluster/getServiceSubnet"));
 const docker = client_1.default;
 const apiServerContainer = () => __awaiter(void 0, void 0, void 0, function* () {
     console.log("Pulling apiserver image");
