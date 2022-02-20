@@ -22,7 +22,7 @@ const program = new commander_1.Command();
 program
     .name("dkp-mirror")
     .description("Mirror your DKP cluster from diagnostic bundle data")
-    .version("0.0.1");
+    .version("1.0.0");
 program
     .command("extract")
     .description("Extract diagnostic bundle data from a DKP diagnostic bundle")
