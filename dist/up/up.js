@@ -82,10 +82,8 @@ const parseClusterResources = () => {
                 jsonObject["apiVersion"] = apiVersion;
                 if (kind == "CustomResourceDefinition" &&
                     jsonObject["spec"]["conversion"]["strategy"] == "Webhook") {
-                    console.log("crd with webhook configuration found: ", name);
                     jsonObject["spec"]["conversion"]["strategy"] = "None";
                 }
-                ;
                 (() => __awaiter(void 0, void 0, void 0, function* () {
                     yield client_1.default
                         .put(`/registry/${kindPath}${name}`)
@@ -115,7 +113,7 @@ const parseCustomResources = () => {
                         (() => __awaiter(void 0, void 0, void 0, function* () {
                             yield client_1.default
                                 .put(`/registry/${apiGroup}/${apiResource}/${namespace}/${name}`)
-                                .value(JSON.stringify(conversion ? conversion : jsonObject));
+                                .value(JSON.stringify(jsonObject));
                         }))();
                     });
                 }
