@@ -1,5 +1,5 @@
-import { join } from "path";
-import { homedir } from "os";
+import { homedir } from 'os'
+import { join } from 'path'
 
 export const homeDir = homedir();
 export const currentWorkingDir = process.cwd();

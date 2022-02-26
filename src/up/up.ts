@@ -148,40 +148,43 @@ const parseCustomResources = () => {
 
           const jsonObjects = JSON.parse(resourceFile);
 
-          jsonObjects.forEach((jsonObject: any) => {
+          jsonObjects.forEach(async (jsonObject: any) => {
             const name = jsonObject["metadata"]["name"];
             jsonObject["metadata"]["namespace"] = namespace;
-            // const conversion = (() => {
-            //   console.log(`processing conversion for ${apiResource} ${name}`)
-            //   if (
-            //     jsonObject.metadata?.annotations?.[
-            //       "cluster.x-k8s.io/conversion-data"
-            //     ]
-            //       ? true
-            //       : false
-            //   ) {
-            //     return JSON.parse(
-            //       jsonObject["metadata"]["annotations"][
-            //         "cluster.x-k8s.io/conversion-data"
-            //       ]
-            //     )
-            //   }
-            // })()
 
-            // console.log(conversion ? "true" : "false")
+            /***
+            const conversion = (() => {
+              console.log(`processing conversion for ${apiResource} ${name}`);
+              if (
+                jsonObject.metadata?.annotations?.[
+                  "cluster.x-k8s.io/conversion-data"
+                ]
+                  ? true
+                  : false
+              ) {
+                const conversionData = JSON.parse(
+                  jsonObject["metadata"]["annotations"][
+                    "cluster.x-k8s.io/conversion-data"
+                  ]
+                );
+                conversionData["metadata"] = jsonObject["metadata"];
 
-            // console.log(
-            //   `etcdctl put /registry/${apiResource}/${apiGroup}/${namespace}/${name} ${JSON.stringify(
-            //     jsonObject
-            //   )}`
-            // );
-            (async () => {
-              await etcdClient
-                .put(
-                  `/registry/${apiGroup}/${apiResource}/${namespace}/${name}`
-                )
-                .value(JSON.stringify(jsonObject));
+                return conversionData;
+              }
             })();
+
+            conversion
+              ? console.log(
+                  `etcdctl put /registry/${apiResource}/${apiGroup}/${namespace}/${name} ${JSON.stringify(
+                    conversion
+                  )}`
+                )
+              : console.log("false");
+            ***/
+
+            await etcdClient
+              .put(`/registry/${apiGroup}/${apiResource}/${namespace}/${name}`)
+              .value(JSON.stringify(jsonObject));
           });
         }
       });

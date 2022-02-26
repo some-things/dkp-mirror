@@ -1,11 +1,10 @@
 #!/usr/bin/env node
-import { Command } from 'commander';
+import { Command } from 'commander'
 
-import down from './down/down';
-import extract from './extract/extract';
-import up from './up/up';
-import { defaultExtractBundleDirectory } from './utils/directories';
-
+import down from './down/down'
+import extract from './extract/extract'
+import up from './up/up'
+import { defaultExtractBundleDirectory } from './utils/directories'
 
 const program = new Command();
 

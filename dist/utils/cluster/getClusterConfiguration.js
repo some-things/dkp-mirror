@@ -14,8 +14,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const promises_1 = require("fs/promises");
 const path_1 = require("path");
-const directories_1 = require("../directories");
 const yaml_1 = __importDefault(require("yaml"));
+const directories_1 = require("../directories");
 const getClusterConfiguration = () => __awaiter(void 0, void 0, void 0, function* () {
     const kubeadmConfigConfigMap = yield (0, promises_1.readFile)((0, path_1.join)(directories_1.configmapsDir, "kube-system/kubeadm-config.json"), "utf-8");
     const kubeadmConfigConfigMapJSON = JSON.parse(kubeadmConfigConfigMap);

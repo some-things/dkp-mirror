@@ -9,10 +9,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const tar_1 = require("tar");
-const path_1 = require("path");
-const promises_1 = require("fs/promises");
 const fs_1 = require("fs");
+const promises_1 = require("fs/promises");
+const path_1 = require("path");
+const tar_1 = require("tar");
 const extract = (bundleFile, outputDir, ticketId) => __awaiter(void 0, void 0, void 0, function* () {
     const extractOutputDir = ticketId
         ? (0, path_1.resolve)((0, path_1.join)(outputDir, ticketId))

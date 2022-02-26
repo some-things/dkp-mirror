@@ -107,15 +107,13 @@ const parseCustomResources = () => {
                     const namespace = (0, path_1.parse)(customResourceDirFile.name).name;
                     const resourceFile = (0, fs_1.readFileSync)((0, path_1.join)(directories_1.customResourcesDir, f.name, customResourceDirFile.name), "utf8");
                     const jsonObjects = JSON.parse(resourceFile);
-                    jsonObjects.forEach((jsonObject) => {
+                    jsonObjects.forEach((jsonObject) => __awaiter(void 0, void 0, void 0, function* () {
                         const name = jsonObject["metadata"]["name"];
                         jsonObject["metadata"]["namespace"] = namespace;
-                        (() => __awaiter(void 0, void 0, void 0, function* () {
-                            yield client_1.default
-                                .put(`/registry/${apiGroup}/${apiResource}/${namespace}/${name}`)
-                                .value(JSON.stringify(jsonObject));
-                        }))();
-                    });
+                        yield client_1.default
+                            .put(`/registry/${apiGroup}/${apiResource}/${namespace}/${name}`)
+                            .value(JSON.stringify(jsonObject));
+                    }));
                 }
             });
         }

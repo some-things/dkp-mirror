@@ -1,7 +1,8 @@
-import { readFile } from "fs/promises";
-import { join } from "path";
-import { configmapsDir } from "../directories";
-import YAML from "yaml";
+import { readFile } from 'fs/promises'
+import { join } from 'path'
+import YAML from 'yaml'
+
+import { configmapsDir } from '../directories'
 
 const getClusterConfiguration = async () => {
   const kubeadmConfigConfigMap = await readFile(

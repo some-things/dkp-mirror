@@ -1,5 +1,6 @@
-import { Network } from "dockerode";
-import dockerClient from "./client";
+import { Network } from 'dockerode'
+
+import dockerClient from './client'
 
 const docker = dockerClient;
 
