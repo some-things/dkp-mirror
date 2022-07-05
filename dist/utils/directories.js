@@ -10,6 +10,6 @@ exports.bundleRootDir = process.env.DKP_MIRROR_BUNDLE_ROOT_DIR
     : exports.currentWorkingDir;
 exports.clusterResourcesDir = (0, path_1.join)(exports.bundleRootDir, "cluster-resources");
 exports.configmapsDir = (0, path_1.join)(exports.bundleRootDir, "configmaps");
-exports.customResourcesDir = (0, path_1.join)(exports.bundleRootDir, "custom-resources");
+exports.customResourcesDir = (0, path_1.join)(exports.bundleRootDir, "cluster-resources/custom-resources");
 exports.defaultExtractBundleDirectory = (0, path_1.join)(exports.homeDir, "Documents/logs/tickets");
 //# sourceMappingURL=directories.js.map
