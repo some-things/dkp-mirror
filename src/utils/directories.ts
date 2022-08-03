@@ -8,10 +8,7 @@ export const bundleRootDir = process.env.DKP_MIRROR_BUNDLE_ROOT_DIR
   : currentWorkingDir;
 export const clusterResourcesDir = join(bundleRootDir, "cluster-resources");
 export const configmapsDir = join(bundleRootDir, "configmaps");
-export const customResourcesDir = join(
-  bundleRootDir,
-  "cluster-resources/custom-resources"
-);
+export const customResourcesDir = join(clusterResourcesDir, "custom-resources");
 export const defaultExtractBundleDirectory = join(
   homeDir,
   "Documents/logs/tickets"
