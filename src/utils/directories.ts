@@ -28,14 +28,23 @@ const findDirectoryRecursive = (dir: string): string => {
   return result || "";
 };
 
+export const getClusterResourcesDir = (): string => {
+  return findDirectoryRecursive("cluster-resources");
+};
+
+export const getConfigmapsDir = (): string => {
+  return findDirectoryRecursive("configmaps");
+};
+
+export const getCustomResourcesDir = (): string => {
+  return findDirectoryRecursive("custom-resources");
+};
+
 export const homeDir = homedir();
 export const currentWorkingDir = process.cwd();
 export const bundleRootDir = process.env.DKP_MIRROR_BUNDLE_ROOT_DIR
   ? process.env.DKP_MIRROR_BUNDLE_ROOT_DIR
   : currentWorkingDir;
-export const clusterResourcesDir = findDirectoryRecursive("cluster-resources");
-export const configmapsDir = findDirectoryRecursive("configmaps");
-export const customResourcesDir = findDirectoryRecursive("custom-resources");
 export const defaultExtractBundleDirectory = join(
   homeDir,
   "Documents/logs/tickets"

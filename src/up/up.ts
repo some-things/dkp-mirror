@@ -3,12 +3,12 @@ import { mkdir, writeFile } from 'fs/promises';
 import { extname, join, parse } from 'path';
 
 import { APISERVER_TOKEN_FILE_DATA, APISERVER_TOKEN_FILE_NAME, ARTIFACTS_DIR_NAME, KUBECONFIG_FILE_DATA, KUBECONFIG_FILE_NAME } from '../constants';
-import { clusterResourcesDir, currentWorkingDir, customResourcesDir } from '../utils/directories';
+import { currentWorkingDir, getClusterResourcesDir, getCustomResourcesDir } from '../utils/directories';
 import apiServerContainer from '../utils/docker/apiServer';
 import etcdContainer from '../utils/docker/etcd';
 import dockerNetwork from '../utils/docker/network';
 import etcdClient from '../utils/etcd/client';
-import { resourceFileToJSON } from '../utils/resourceFileToJSON';
+import { jsonResourceFileToJSON, yamlResourceFileToJSON } from '../utils/resourceFileToJSON';
 
 const defaultClusterResourceFilesToParse: string[] = [
   "nodes.json",
@@ -33,7 +33,7 @@ const defaultNamespacedResourceDirsToParse: string[] = [
 
 // TODO: too much repeated code... refactor this so we can just pass around parsing this for any resource
 const parseClusterResources = () => {
-  const clusterResourcesDirFiles = readdirSync(clusterResourcesDir, {
+  const clusterResourcesDirFiles = readdirSync(getClusterResourcesDir(), {
     withFileTypes: true,
   });
 
@@ -50,23 +50,30 @@ const parseClusterResources = () => {
       defaultNamespacedResourceDirsToParse.includes(f.name)
     ) {
       const clusterResourcesDirDirs = readdirSync(
-        join(clusterResourcesDir, f.name),
+        join(getClusterResourcesDir(), f.name),
         { withFileTypes: true }
       );
       // for each file in each dir in the cluster-resources dir (namespaced resources)
       clusterResourcesDirDirs.forEach((clusterResourcesDirDirsFile) => {
         if (
-          extname(clusterResourcesDirDirsFile.name) === ".json" &&
+          extname(clusterResourcesDirDirsFile.name) === (".json" || ".yaml") &&
           !clusterResourcesDirDirsFile.name.includes("-errors")
         ) {
           const namespace = parse(clusterResourcesDirDirsFile.name).name;
 
           const resourceFile = readFileSync(
-            join(clusterResourcesDir, f.name, clusterResourcesDirDirsFile.name),
+            join(
+              getClusterResourcesDir(),
+              f.name,
+              clusterResourcesDirDirsFile.name
+            ),
             "utf8"
           );
 
-          const jsonObjects = resourceFileToJSON(resourceFile);
+          const jsonObjects =
+            extname(clusterResourcesDirDirsFile.name) === ".yaml"
+              ? yamlResourceFileToJSON(resourceFile)
+              : jsonResourceFileToJSON(resourceFile);
 
           jsonObjects.forEach((jsonObject: any) => {
             const name = jsonObject["metadata"]["name"];
@@ -86,15 +93,18 @@ const parseClusterResources = () => {
     } else if (
       f.isFile() &&
       defaultClusterResourceFilesToParse.includes(f.name) &&
-      extname(f.name) === ".json" &&
+      extname(f.name) === (".json" || ".yaml") &&
       !f.name.includes("-errors")
     ) {
       const resourceFile = readFileSync(
-        join(join(clusterResourcesDir, f.name)),
+        join(join(getClusterResourcesDir(), f.name)),
         "utf8"
       );
 
-      const jsonObjects = resourceFileToJSON(resourceFile);
+      const jsonObjects =
+        extname(f.name) === ".yaml"
+          ? yamlResourceFileToJSON(resourceFile)
+          : jsonResourceFileToJSON(resourceFile);
 
       jsonObjects.forEach((jsonObject: any) => {
         const name = jsonObject["metadata"]["name"];
@@ -118,7 +128,12 @@ const parseClusterResources = () => {
 };
 
 const parseCustomResources = () => {
-  const customResourcesDirFiles = readdirSync(customResourcesDir, {
+  // if there are no custom resources, return
+  if (getCustomResourcesDir() === "") {
+    return;
+  }
+
+  const customResourcesDirFiles = readdirSync(getCustomResourcesDir(), {
     withFileTypes: true,
   });
 
@@ -130,26 +145,26 @@ const parseCustomResources = () => {
       const apiGroup = f.name.split(".").slice(1).join(".");
 
       const customResourceDirFiles = readdirSync(
-        join(customResourcesDir, f.name),
+        join(getCustomResourcesDir(), f.name),
         { withFileTypes: true }
       );
 
       customResourceDirFiles.forEach((customResourceDirFile) => {
         if (
-          extname(customResourceDirFile.name) === ".json" &&
-          !customResourceDirFile.name.includes("-errors")
+          extname(customResourceDirFile.name) === (".json" || ".yaml") ||
+          (".yaml" && !customResourceDirFile.name.includes("-errors"))
         ) {
           const namespace = parse(customResourceDirFile.name).name;
 
           const resourceFile = readFileSync(
-            join(customResourcesDir, f.name, customResourceDirFile.name),
+            join(getCustomResourcesDir(), f.name, customResourceDirFile.name),
             "utf8"
           );
 
-          console.log(
-            `processing file: ${f.name}/${customResourceDirFile.name}`
-          );
-          const jsonObjects = resourceFileToJSON(resourceFile);
+          const jsonObjects =
+            extname(customResourceDirFile.name) === ".yaml"
+              ? yamlResourceFileToJSON(resourceFile)
+              : jsonResourceFileToJSON(resourceFile);
 
           jsonObjects.forEach((jsonObject: any) => {
             const name = jsonObject["metadata"]["name"];
@@ -168,17 +183,19 @@ const parseCustomResources = () => {
       // for each file in the custom-resources dir (cluster resources)
     } else if (
       f.isFile() &&
-      extname(f.name) === ".json" &&
+      extname(f.name) === (".json" || ".yaml") &&
       !f.name.includes("-errors")
     ) {
       const apiGroup = f.name.split(".").slice(1, -1).join(".");
       const resourceFile = readFileSync(
-        join(customResourcesDir, f.name),
+        join(getCustomResourcesDir(), f.name),
         "utf8"
       );
 
-      console.log(`processing file: ${f.name}`);
-      const jsonObjects = resourceFileToJSON(resourceFile);
+      const jsonObjects =
+        extname(f.name) === ".yaml"
+          ? yamlResourceFileToJSON(resourceFile)
+          : jsonResourceFileToJSON(resourceFile);
 
       jsonObjects.forEach((jsonObject: any) => {
         const name = jsonObject["metadata"]["name"];
@@ -302,7 +319,7 @@ const getApiVersion = (kind: string): string => {
   // for CRs, we can just get the apiVersion from the object
   // however, we may have to hardcode some apiVersions for "default" resources (e.g., non-CRs)
   const apiResourceFile = readFileSync(
-    join(clusterResourcesDir, "resources.json"),
+    join(getClusterResourcesDir(), "resources.json"),
     "utf8"
   );
   const apiResourcesJson = JSON.parse(apiResourceFile);

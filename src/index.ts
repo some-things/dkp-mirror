@@ -6,13 +6,12 @@ import extract from './extract/extract';
 import up from './up/up';
 import { defaultExtractBundleDirectory } from './utils/directories';
 
-
 const program = new Command();
 
 program
   .name("dkp-mirror")
   .description("Mirror your DKP cluster from diagnostic bundle data")
-  .version("1.0.0");
+  .version("1.2.0");
 
 program
   .command("extract")
