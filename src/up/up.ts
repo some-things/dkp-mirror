@@ -2,13 +2,7 @@ import { readdirSync, readFileSync } from 'fs';
 import { mkdir, writeFile } from 'fs/promises';
 import { extname, join, parse } from 'path';
 
-import {
-  APISERVER_TOKEN_FILE_DATA,
-  APISERVER_TOKEN_FILE_NAME,
-  ARTIFACTS_DIR_NAME,
-  KUBECONFIG_FILE_DATA,
-  KUBECONFIG_FILE_NAME,
-} from '../constants';
+import { APISERVER_TOKEN_FILE_DATA, APISERVER_TOKEN_FILE_NAME, ARTIFACTS_DIR_NAME, KUBECONFIG_FILE_DATA, KUBECONFIG_FILE_NAME } from '../constants';
 import { clusterResourcesDir, currentWorkingDir, customResourcesDir } from '../utils/directories';
 import apiServerContainer from '../utils/docker/apiServer';
 import etcdContainer from '../utils/docker/etcd';
@@ -346,7 +340,6 @@ const up = async () => {
   console.log("Successfully started DKP mirror!");
   console.log(`
     To access the DKP mirror, execute:
-
     export KUBECONFIG=${join(
       currentWorkingDir,
       ARTIFACTS_DIR_NAME,
