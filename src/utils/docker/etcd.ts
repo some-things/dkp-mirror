@@ -1,7 +1,8 @@
-import { Container } from "dockerode";
-import { ETCD_IMAGE } from "../../constants";
-import sleep from "../sleep";
-import dockerClient from "./client";
+import { Container } from 'dockerode'
+
+import { ETCD_IMAGE } from '../../constants'
+import sleep from '../sleep'
+import dockerClient from './client'
 
 const docker = dockerClient;
 

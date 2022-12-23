@@ -1,7 +1,8 @@
-import { existsSync } from "fs";
-import { rm } from "fs/promises";
-import { ARTIFACTS_DIR_NAME } from "../constants";
-import dockerClient from "../utils/docker/client";
+import { existsSync } from 'fs'
+import { rm } from 'fs/promises'
+
+import { ARTIFACTS_DIR_NAME } from '../constants'
+import dockerClient from '../utils/docker/client'
 
 const down = async () => {
   const docker = dockerClient;

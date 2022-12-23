@@ -1,10 +1,10 @@
-import { join } from 'path';
+import { join } from 'path'
 
-import { APISERVER_IMAGE, APISERVER_TOKEN_FILE_NAME, ARTIFACTS_DIR_NAME } from '../../constants';
-import getServiceSubnet from '../cluster/getServiceSubnet';
-import { currentWorkingDir } from '../directories';
-import sleep from '../sleep';
-import dockerClient from './client';
+import { APISERVER_IMAGE, APISERVER_TOKEN_FILE_NAME, ARTIFACTS_DIR_NAME } from '../../constants'
+import getServiceSubnet from '../cluster/getServiceSubnet'
+import { currentWorkingDir } from '../directories'
+import sleep from '../sleep'
+import dockerClient from './client'
 
 const docker = dockerClient;
 

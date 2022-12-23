@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'fs';
 import { mkdir, writeFile } from 'fs/promises';
 import { extname, join, parse } from 'path';
+import { parse as parseYaml } from 'yaml';
 
 import { APISERVER_TOKEN_FILE_DATA, APISERVER_TOKEN_FILE_NAME, ARTIFACTS_DIR_NAME, KUBECONFIG_FILE_DATA, KUBECONFIG_FILE_NAME } from '../constants';
 import { currentWorkingDir, getClusterResourcesDir, getCustomResourcesDir } from '../utils/directories';
@@ -35,13 +36,13 @@ const defaultNamespacedResourceDirsToParse: string[] = [
 const parseClusterResources = () => {
   const clusterResourcesDirFiles = readdirSync(getClusterResourcesDir(), {
     withFileTypes: true,
-  });
+  }) // filter out custom-resources dir
+    .filter((f) => f.name != "custom-resources");
 
   // for each file in the cluster-resources dir
   clusterResourcesDirFiles.forEach((f) => {
     const fileBasename = parse(f.name).name;
     const kind = getKind(fileBasename);
-    const apiVersion = getApiVersion(kind);
     const kindPath = getKindPath(fileBasename);
 
     // for each directory in the cluster-resources dir
@@ -75,12 +76,10 @@ const parseClusterResources = () => {
               ? yamlResourceFileToJSON(resourceFile)
               : jsonResourceFileToJSON(resourceFile);
 
-          jsonObjects.forEach((jsonObject: any) => {
+          jsonObjects["items"].forEach((jsonObject: any) => {
             const name = jsonObject["metadata"]["name"];
             jsonObject["metadata"]["namespace"] = namespace;
             jsonObject["kind"] = kind;
-            jsonObject["apiVersion"] = apiVersion;
-
             (async () => {
               await etcdClient
                 .put(`/registry/${kindPath}${namespace}/${name}`)
@@ -106,15 +105,15 @@ const parseClusterResources = () => {
           ? yamlResourceFileToJSON(resourceFile)
           : jsonResourceFileToJSON(resourceFile);
 
-      jsonObjects.forEach((jsonObject: any) => {
+      jsonObjects["items"].forEach((jsonObject: any) => {
         const name = jsonObject["metadata"]["name"];
         jsonObject["kind"] = kind;
-        jsonObject["apiVersion"] = apiVersion;
-        // we do this to remove webhook configuration from crds, which appeared to cause apiserver panics
-        // TODO: investigate better options
+
+        // TODO: Investigate better options
+        // TODO: Might need to fix some escaping in the CRD text
         if (kind == "CustomResourceDefinition") {
-          jsonObject["spec"]["conversion"] = {};
-          jsonObject["spec"]["conversion"]["strategy"] = "None";
+          const apiVersion = getApiVersion(kind);
+          jsonObject["apiVersion"] = apiVersion;
         }
 
         (async () => {
@@ -166,17 +165,13 @@ const parseCustomResources = () => {
               ? yamlResourceFileToJSON(resourceFile)
               : jsonResourceFileToJSON(resourceFile);
 
-          jsonObjects.forEach((jsonObject: any) => {
-            const name = jsonObject["metadata"]["name"];
-            jsonObject["metadata"]["namespace"] = namespace;
+          yamlObjects.forEach(async (yamlObject: any) => {
+            const name = yamlObject["metadata"]["name"];
+            yamlObject["metadata"]["namespace"] = namespace;
 
-            (async () => {
-              await etcdClient
-                .put(
-                  `/registry/${apiGroup}/${apiResource}/${namespace}/${name}`
-                )
-                .value(JSON.stringify(jsonObject));
-            })();
+            await etcdClient
+              .put(`/registry/${apiGroup}/${apiResource}/${namespace}/${name}`)
+              .value(JSON.stringify(yamlObject));
           });
         }
       });
@@ -197,13 +192,13 @@ const parseCustomResources = () => {
           ? yamlResourceFileToJSON(resourceFile)
           : jsonResourceFileToJSON(resourceFile);
 
-      jsonObjects.forEach((jsonObject: any) => {
-        const name = jsonObject["metadata"]["name"];
+      yamlObjects.forEach((yamlObject: any) => {
+        const name = yamlObject["metadata"]["name"];
 
         (async () => {
           await etcdClient
             .put(`/registry/${apiGroup}/${apiResource}/${name}`)
-            .value(JSON.stringify(jsonObject));
+            .value(JSON.stringify(yamlObject));
         })();
       });
     }
