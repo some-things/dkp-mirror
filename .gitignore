@@ -149,3 +149,4 @@ notes.md
 kubeconfig.mirror
 debug.log
 release
+dist/
