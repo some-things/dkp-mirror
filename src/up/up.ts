@@ -8,6 +8,7 @@ import apiServerContainer from '../utils/docker/apiServer';
 import etcdContainer from '../utils/docker/etcd';
 import dockerNetwork from '../utils/docker/network';
 import etcdClient from '../utils/etcd/client';
+import { resourceFileToJSON } from '../utils/resourceFileToJSON';
 
 const defaultClusterResourceFilesToParse: string[] = [
   "nodes.json",
@@ -54,7 +55,10 @@ const parseClusterResources = () => {
       );
       // for each file in each dir in the cluster-resources dir (namespaced resources)
       clusterResourcesDirDirs.forEach((clusterResourcesDirDirsFile) => {
-        if (extname(clusterResourcesDirDirsFile.name) === ".json") {
+        if (
+          extname(clusterResourcesDirDirsFile.name) === ".json" &&
+          !clusterResourcesDirDirsFile.name.includes("-errors")
+        ) {
           const namespace = parse(clusterResourcesDirDirsFile.name).name;
 
           const resourceFile = readFileSync(
@@ -62,7 +66,7 @@ const parseClusterResources = () => {
             "utf8"
           );
 
-          const jsonObjects = JSON.parse(resourceFile);
+          const jsonObjects = resourceFileToJSON(resourceFile);
 
           jsonObjects.forEach((jsonObject: any) => {
             const name = jsonObject["metadata"]["name"];
@@ -82,14 +86,15 @@ const parseClusterResources = () => {
     } else if (
       f.isFile() &&
       defaultClusterResourceFilesToParse.includes(f.name) &&
-      extname(f.name) === ".json"
+      extname(f.name) === ".json" &&
+      !f.name.includes("-errors")
     ) {
       const resourceFile = readFileSync(
         join(join(clusterResourcesDir, f.name)),
         "utf8"
       );
 
-      const jsonObjects = JSON.parse(resourceFile);
+      const jsonObjects = resourceFileToJSON(resourceFile);
 
       jsonObjects.forEach((jsonObject: any) => {
         const name = jsonObject["metadata"]["name"];
@@ -130,7 +135,10 @@ const parseCustomResources = () => {
       );
 
       customResourceDirFiles.forEach((customResourceDirFile) => {
-        if (extname(customResourceDirFile.name) === ".json") {
+        if (
+          extname(customResourceDirFile.name) === ".json" &&
+          !customResourceDirFile.name.includes("-errors")
+        ) {
           const namespace = parse(customResourceDirFile.name).name;
 
           const resourceFile = readFileSync(
@@ -138,7 +146,10 @@ const parseCustomResources = () => {
             "utf8"
           );
 
-          const jsonObjects = JSON.parse(resourceFile);
+          console.log(
+            `processing file: ${f.name}/${customResourceDirFile.name}`
+          );
+          const jsonObjects = resourceFileToJSON(resourceFile);
 
           jsonObjects.forEach((jsonObject: any) => {
             const name = jsonObject["metadata"]["name"];
@@ -155,14 +166,19 @@ const parseCustomResources = () => {
         }
       });
       // for each file in the custom-resources dir (cluster resources)
-    } else if (f.isFile() && extname(f.name) === ".json") {
+    } else if (
+      f.isFile() &&
+      extname(f.name) === ".json" &&
+      !f.name.includes("-errors")
+    ) {
       const apiGroup = f.name.split(".").slice(1, -1).join(".");
       const resourceFile = readFileSync(
         join(customResourcesDir, f.name),
         "utf8"
       );
 
-      const jsonObjects = JSON.parse(resourceFile);
+      console.log(`processing file: ${f.name}`);
+      const jsonObjects = resourceFileToJSON(resourceFile);
 
       jsonObjects.forEach((jsonObject: any) => {
         const name = jsonObject["metadata"]["name"];
