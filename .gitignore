@@ -187,4 +187,5 @@ notes.md
 kubeconfig.mirror
 debug.log
 release
+dist/
 .dkp-mirror
