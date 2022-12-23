@@ -1,4 +1,4 @@
-import { Etcd3 } from "etcd3";
+import { Etcd3 } from 'etcd3'
 
 const etcdClient = new Etcd3({
   grpcOptions: {

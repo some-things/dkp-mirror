@@ -1,4 +1,4 @@
-import getClusterConfiguration from "./getClusterConfiguration";
+import getClusterConfiguration from './getClusterConfiguration'
 
 const getPodSubnet = async () => {
   const clusterConfiguration = await getClusterConfiguration();
