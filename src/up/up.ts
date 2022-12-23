@@ -1,7 +1,6 @@
 import { readdirSync, readFileSync } from 'fs';
 import { mkdir, writeFile } from 'fs/promises';
 import { extname, join, parse } from 'path';
-import { parse as parseYaml } from 'yaml';
 
 import { APISERVER_TOKEN_FILE_DATA, APISERVER_TOKEN_FILE_NAME, ARTIFACTS_DIR_NAME, KUBECONFIG_FILE_DATA, KUBECONFIG_FILE_NAME } from '../constants';
 import { currentWorkingDir, getClusterResourcesDir, getCustomResourcesDir } from '../utils/directories';
@@ -76,7 +75,7 @@ const parseClusterResources = () => {
               ? yamlResourceFileToJSON(resourceFile)
               : jsonResourceFileToJSON(resourceFile);
 
-          jsonObjects["items"].forEach((jsonObject: any) => {
+          jsonObjects.forEach((jsonObject: any) => {
             const name = jsonObject["metadata"]["name"];
             jsonObject["metadata"]["namespace"] = namespace;
             jsonObject["kind"] = kind;
@@ -105,7 +104,7 @@ const parseClusterResources = () => {
           ? yamlResourceFileToJSON(resourceFile)
           : jsonResourceFileToJSON(resourceFile);
 
-      jsonObjects["items"].forEach((jsonObject: any) => {
+      jsonObjects.forEach((jsonObject: any) => {
         const name = jsonObject["metadata"]["name"];
         jsonObject["kind"] = kind;
 
@@ -165,7 +164,7 @@ const parseCustomResources = () => {
               ? yamlResourceFileToJSON(resourceFile)
               : jsonResourceFileToJSON(resourceFile);
 
-          yamlObjects.forEach(async (yamlObject: any) => {
+          jsonObjects.forEach(async (yamlObject: any) => {
             const name = yamlObject["metadata"]["name"];
             yamlObject["metadata"]["namespace"] = namespace;
 
@@ -192,7 +191,7 @@ const parseCustomResources = () => {
           ? yamlResourceFileToJSON(resourceFile)
           : jsonResourceFileToJSON(resourceFile);
 
-      yamlObjects.forEach((yamlObject: any) => {
+      jsonObjects.forEach((yamlObject: any) => {
         const name = yamlObject["metadata"]["name"];
 
         (async () => {
