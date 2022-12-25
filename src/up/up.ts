@@ -317,6 +317,16 @@ const parseResources = (files: Dirent[]) => {
         if (!customResource) {
           obj.kind = kind;
           obj.apiVersion = getApiVersion(kind);
+          if (
+            kind === "CustomResourceDefinition" &&
+            obj["spec"]["conversion"]["strategy"] === "Webhook"
+          ) {
+            console.log(
+              `info: setting conversion strategy to None for CRD ${objName}`
+            );
+            // obj["spec"]["conversion"] = {};
+            obj["spec"]["conversion"]["strategy"] = "None";
+          }
         }
 
         const etcdKey = `/registry/${
