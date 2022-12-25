@@ -1,7 +1,7 @@
-import { existsSync } from 'fs'
-import { mkdir } from 'fs/promises'
-import { join, parse, resolve } from 'path'
-import { x } from 'tar'
+import { existsSync } from 'fs';
+import { mkdir } from 'fs/promises';
+import { join, parse, resolve } from 'path';
+import { x } from 'tar';
 
 const extract = async (
   bundleFile: string,

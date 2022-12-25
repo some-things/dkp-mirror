@@ -1,6 +1,6 @@
-import { readdirSync, readFileSync } from 'fs';
+import { Dirent, readdirSync, readFileSync } from 'fs';
 import { mkdir, writeFile } from 'fs/promises';
-import { extname, join, parse } from 'path';
+import path from 'path';
 
 import { APISERVER_TOKEN_FILE_DATA, APISERVER_TOKEN_FILE_NAME, ARTIFACTS_DIR_NAME, KUBECONFIG_FILE_DATA, KUBECONFIG_FILE_NAME } from '../constants';
 import { currentWorkingDir, getClusterResourcesDir, getCustomResourcesDir } from '../utils/directories';
@@ -8,203 +8,129 @@ import apiServerContainer from '../utils/docker/apiServer';
 import etcdContainer from '../utils/docker/etcd';
 import dockerNetwork from '../utils/docker/network';
 import etcdClient from '../utils/etcd/client';
-import { jsonResourceFileToJSON, yamlResourceFileToJSON } from '../utils/resourceFileToJSON';
+import { resourceFileToJSON } from '../utils/resourceFileToJSON';
 
 const defaultClusterResourceFilesToParse: string[] = [
-  "nodes.json",
-  "namespaces.json",
   "custom-resource-definitions.json",
-  "storage-classes.json",
+  // todo: test groups
+  "groups.json",
+  "namespaces.json",
+  "nodes.json",
   "pvs.json",
+  // todo: implement resources.json (api-resources)
+  // "resources.json",
+  "storage-classes.json",
 ];
+
 const defaultNamespacedResourceDirsToParse: string[] = [
   "cronjobs",
   "deployments",
   "events",
+  "image-pull-secrets",
   "ingress",
   "jobs",
-  // NOTE: limitranges untested
+  // todo: test limitranges
   "limitranges",
   "pods",
   "pvcs",
+  "replicasets",
   "services",
   "statefulsets",
 ];
 
-// TODO: too much repeated code... refactor this so we can just pass around parsing this for any resource
-const parseClusterResources = () => {
-  const clusterResourcesDirFiles = readdirSync(getClusterResourcesDir(), {
-    withFileTypes: true,
-  }) // filter out custom-resources dir
-    .filter((f) => f.name != "custom-resources");
+// todo: add flags to ignore other dirs so we can default include all
+const defaultDirectoriesToIgnore: string[] = [
+  "custom-resources",
+  // not really useful since it is only based on the account executing the command
+  // also not really useful bc it isn't an actual api resource
+  "auth-cani-list",
+];
 
-  // for each file in the cluster-resources dir
-  clusterResourcesDirFiles.forEach((f) => {
-    const fileBasename = parse(f.name).name;
-    const kind = getKind(fileBasename);
-    const kindPath = getKindPath(fileBasename);
+// todo: add flags to ignore other files so we can default include all
+// todo: evaluate implementing resources.json (api-resources)
+const defaultFilesToIgnore: string[] = ["resources.json"];
 
-    // for each directory in the cluster-resources dir
-    if (
-      f.isDirectory() &&
-      defaultNamespacedResourceDirsToParse.includes(f.name)
-    ) {
-      const clusterResourcesDirDirs = readdirSync(
-        join(getClusterResourcesDir(), f.name),
-        { withFileTypes: true }
-      );
-      // for each file in each dir in the cluster-resources dir (namespaced resources)
-      clusterResourcesDirDirs.forEach((clusterResourcesDirDirsFile) => {
-        if (
-          extname(clusterResourcesDirDirsFile.name) === (".json" || ".yaml") &&
-          !clusterResourcesDirDirsFile.name.includes("-errors")
-        ) {
-          const namespace = parse(clusterResourcesDirDirsFile.name).name;
-
-          const resourceFile = readFileSync(
-            join(
-              getClusterResourcesDir(),
-              f.name,
-              clusterResourcesDirDirsFile.name
-            ),
-            "utf8"
-          );
-
-          const jsonObjects =
-            extname(clusterResourcesDirDirsFile.name) === ".yaml"
-              ? yamlResourceFileToJSON(resourceFile)
-              : jsonResourceFileToJSON(resourceFile);
-
-          jsonObjects.forEach((jsonObject: any) => {
-            const name = jsonObject["metadata"]["name"];
-            jsonObject["metadata"]["namespace"] = namespace;
-            jsonObject["kind"] = kind;
-            (async () => {
-              await etcdClient
-                .put(`/registry/${kindPath}${namespace}/${name}`)
-                .value(JSON.stringify(jsonObject));
-            })();
-          });
-        }
-      });
-      // for each file in the cluster-resources dir (cluster resources)
-    } else if (
-      f.isFile() &&
-      defaultClusterResourceFilesToParse.includes(f.name) &&
-      extname(f.name) === (".json" || ".yaml") &&
-      !f.name.includes("-errors")
-    ) {
-      const resourceFile = readFileSync(
-        join(join(getClusterResourcesDir(), f.name)),
-        "utf8"
-      );
-
-      const jsonObjects =
-        extname(f.name) === ".yaml"
-          ? yamlResourceFileToJSON(resourceFile)
-          : jsonResourceFileToJSON(resourceFile);
-
-      jsonObjects.forEach((jsonObject: any) => {
-        const name = jsonObject["metadata"]["name"];
-        jsonObject["kind"] = kind;
-
-        // TODO: Investigate better options
-        // TODO: Might need to fix some escaping in the CRD text
-        if (kind == "CustomResourceDefinition") {
-          const apiVersion = getApiVersion(kind);
-          jsonObject["apiVersion"] = apiVersion;
-        }
-
-        (async () => {
-          await etcdClient
-            .put(`/registry/${kindPath}${name}`)
-            .value(JSON.stringify(jsonObject));
-        })();
-      });
-    }
-  });
+const isNamespacedResource = (file: Dirent): boolean => {
+  if (file.isDirectory()) {
+    return true;
+  } else {
+    return false;
+  }
 };
 
-const parseCustomResources = () => {
-  // if there are no custom resources, return
-  if (getCustomResourcesDir() === "") {
-    return;
-  }
-
-  const customResourcesDirFiles = readdirSync(getCustomResourcesDir(), {
+// todo: condense these
+const getClusterScopedResources = () => {
+  return readdirSync(getClusterResourcesDir(), {
     withFileTypes: true,
-  });
+  }).filter(
+    (f) =>
+      !defaultDirectoriesToIgnore.includes(f.name) &&
+      !defaultFilesToIgnore.includes(f.name) &&
+      !isNamespacedResource(f)
+  );
+};
 
-  customResourcesDirFiles.forEach((f) => {
-    const apiResource = f.name.split(".")[0];
+const getNamespaceScopedResources = () => {
+  return readdirSync(getClusterResourcesDir(), {
+    withFileTypes: true,
+  }).filter(
+    (f) =>
+      !defaultDirectoriesToIgnore.includes(f.name) &&
+      !defaultFilesToIgnore.includes(f.name) &&
+      isNamespacedResource(f)
+  );
+};
 
-    // for each file in each dir in the custom-resources dir (namespaced resources)
-    if (f.isDirectory()) {
-      const apiGroup = f.name.split(".").slice(1).join(".");
+const getClusterScopedCustomResources = () => {
+  return readdirSync(getCustomResourcesDir(), {
+    withFileTypes: true,
+  }).filter(
+    (f) =>
+      !defaultDirectoriesToIgnore.includes(f.name) &&
+      !defaultFilesToIgnore.includes(f.name) &&
+      !isNamespacedResource(f)
+  );
+};
 
-      const customResourceDirFiles = readdirSync(
-        join(getCustomResourcesDir(), f.name),
-        { withFileTypes: true }
-      );
+const getNamespaceScopedCustomResources = () => {
+  return readdirSync(getCustomResourcesDir(), {
+    withFileTypes: true,
+  }).filter(
+    (f) =>
+      !defaultDirectoriesToIgnore.includes(f.name) &&
+      !defaultFilesToIgnore.includes(f.name) &&
+      isNamespacedResource(f)
+  );
+};
 
-      customResourceDirFiles.forEach((customResourceDirFile) => {
-        if (
-          extname(customResourceDirFile.name) === (".json" || ".yaml") ||
-          (".yaml" && !customResourceDirFile.name.includes("-errors"))
-        ) {
-          const namespace = parse(customResourceDirFile.name).name;
+const validFileExtensions = [".json", ".yaml", ".yml"];
 
-          const resourceFile = readFileSync(
-            join(getCustomResourcesDir(), f.name, customResourceDirFile.name),
-            "utf8"
-          );
+const isValidFileType = (file: Dirent): boolean => {
+  if (
+    validFileExtensions.includes(path.extname(file.name)) &&
+    !file.name.includes("-errors")
+  ) {
+    return true;
+  } else {
+    return false;
+  }
+};
 
-          const jsonObjects =
-            extname(customResourceDirFile.name) === ".yaml"
-              ? yamlResourceFileToJSON(resourceFile)
-              : jsonResourceFileToJSON(resourceFile);
-
-          jsonObjects.forEach(async (yamlObject: any) => {
-            const name = yamlObject["metadata"]["name"];
-            yamlObject["metadata"]["namespace"] = namespace;
-
-            await etcdClient
-              .put(`/registry/${apiGroup}/${apiResource}/${namespace}/${name}`)
-              .value(JSON.stringify(yamlObject));
-          });
-        }
-      });
-      // for each file in the custom-resources dir (cluster resources)
-    } else if (
-      f.isFile() &&
-      extname(f.name) === (".json" || ".yaml") &&
-      !f.name.includes("-errors")
-    ) {
-      const apiGroup = f.name.split(".").slice(1, -1).join(".");
-      const resourceFile = readFileSync(
-        join(getCustomResourcesDir(), f.name),
-        "utf8"
-      );
-
-      const jsonObjects =
-        extname(f.name) === ".yaml"
-          ? yamlResourceFileToJSON(resourceFile)
-          : jsonResourceFileToJSON(resourceFile);
-
-      jsonObjects.forEach((yamlObject: any) => {
-        const name = yamlObject["metadata"]["name"];
-
-        (async () => {
-          await etcdClient
-            .put(`/registry/${apiGroup}/${apiResource}/${name}`)
-            .value(JSON.stringify(yamlObject));
-        })();
-      });
-    }
-  });
+// we do this so that we know what dirs to look at
+// todo: handle file paths better so this isn't needed
+const isCustomResource = (file: Dirent): boolean => {
+  if (
+    !defaultClusterResourceFilesToParse.includes(file.name) &&
+    !defaultNamespacedResourceDirsToParse.includes(file.name)
+  ) {
+    return true;
+  } else {
+    return false;
+  }
 };
 
 // TODO: use Kind instead of filename?
+// this is the path of the key in etcd
 const getKindPath = (filename: string): string => {
   let kindPath: string;
 
@@ -307,16 +233,120 @@ const getKind = (filename: string): string => {
   return kind;
 };
 
+const parseResources = (files: Dirent[]) => {
+  for (let i = 0; i < files.length; i++) {
+    const namespaced: boolean = isNamespacedResource(files[i]);
+    const customResource: boolean = isCustomResource(files[i]);
+    //      const apiGroup = f.name.split(".").slice(1, -1).join(".");
+    // todo: reevaluate the stuff below and where it is used
+    const fileBasename: string = customResource
+      ? files[i].name.replace(/(.json|.yaml|.yml)/g, "")
+      : path.parse(files[i].name).name;
+    const kind: string = getKind(fileBasename);
+    const kindPath: string = getKindPath(fileBasename);
+    // const apiGroup: string = fileBasename.split(".").slice(1, -1).join(".");
+    const apiGroup: string = files[i].name.split(".").slice(1).join(".");
+    const filesToParsePaths: string[] = [];
+
+    // skip processing the file if:
+    // * it is not a json file
+    // * it is not a yaml file
+    // * it is an errors file
+    if (!namespaced && !isValidFileType(files[i])) {
+      console.warn(`warning: skipping invalid file ${files[i].name}...`);
+      continue;
+    }
+
+    // namespaced
+    if (namespaced) {
+      // for each file in the resource's directory, push it to the filesToParse array
+      readdirSync(
+        path.join(
+          customResource ? getCustomResourcesDir() : getClusterResourcesDir(),
+          files[i].name
+        ),
+        {
+          withFileTypes: true,
+        }
+      ).forEach((f) => {
+        if (isValidFileType(f)) {
+          filesToParsePaths.push(
+            path.join(
+              customResource
+                ? getCustomResourcesDir()
+                : getClusterResourcesDir(),
+              files[i].name,
+              f.name
+            )
+          );
+        }
+      });
+      // non-namespaced
+    } else {
+      filesToParsePaths.push(
+        path.join(
+          customResource ? getCustomResourcesDir() : getClusterResourcesDir(),
+          files[i].name
+        )
+      );
+    }
+
+    for (let j = 0; j < filesToParsePaths.length; j++) {
+      const objects = resourceFileToJSON(filesToParsePaths[j]);
+
+      console.log(`info: parsing ${filesToParsePaths[j]}`);
+
+      // may need to make this synchronous
+      objects.forEach(async (obj: any) => {
+        const objName = obj.metadata?.name;
+        if (!objName) {
+          //   console.warn(
+          //     `warning: skipping object without name in file: ${filesToParsePaths[j]}`
+          //   );
+          return;
+        }
+
+        // todo: ensure all files include namespace in the objects
+        // (may not have been the case for older versions of support-bundle)
+        // const namespace: string | null = namespaced
+        // ? path.parse(files[i].name).name
+        // : null;
+        const objNamespace = obj.metadata?.namespace;
+
+        // todo: evaluate this...
+        if (!customResource) {
+          obj.kind = kind;
+          obj.apiVersion = getApiVersion(kind);
+        }
+
+        const etcdKey = `/registry/${
+          customResource ? apiGroup + "/" : kindPath
+        }${
+          customResource
+            ? // todo: this gets the kind name for the path in etcd; possibly move this to var at the top
+              files[i].name.split(".")[0] + "/"
+            : ""
+        }${namespaced ? objNamespace + "/" : ""}${objName}`;
+
+        try {
+          await etcdClient.put(etcdKey).value(JSON.stringify(obj));
+        } catch (e) {
+          console.error(`error: etcd put failed for key ${etcdKey}: ${e}`);
+        }
+      });
+    }
+  }
+};
+
 const getApiVersion = (kind: string): string => {
   // TODO: check case where it is possible to have multiple apiGroupVersions/apiVersions for a single kind name
+  // need to check more for GVKs
   // totally possible that there will be CRs that use the same "kind name" (e.g.,  "node")
   // for CRs, we can just get the apiVersion from the object
   // however, we may have to hardcode some apiVersions for "default" resources (e.g., non-CRs)
-  const apiResourceFile = readFileSync(
-    join(getClusterResourcesDir(), "resources.json"),
-    "utf8"
+  const apiResourcesJson = JSON.parse(
+    readFileSync(path.join(getClusterResourcesDir(), "resources.json"), "utf8")
   );
-  const apiResourcesJson = JSON.parse(apiResourceFile);
 
   // TODO: maybe clean this up a bit?
   const apiVersion = (() => {
@@ -335,13 +365,13 @@ const getApiVersion = (kind: string): string => {
 
 const createArtifactsDir = async () => {
   console.log("Creating artifacts directory");
-  await mkdir(join(currentWorkingDir, ARTIFACTS_DIR_NAME));
+  await mkdir(path.join(currentWorkingDir, ARTIFACTS_DIR_NAME));
 };
 
 const writeApiserverTokenFile = async () => {
   console.log("Writing kube-apiserver token file");
   await writeFile(
-    join(currentWorkingDir, ARTIFACTS_DIR_NAME, APISERVER_TOKEN_FILE_NAME),
+    path.join(currentWorkingDir, ARTIFACTS_DIR_NAME, APISERVER_TOKEN_FILE_NAME),
     APISERVER_TOKEN_FILE_DATA
   );
 };
@@ -349,7 +379,7 @@ const writeApiserverTokenFile = async () => {
 const writeKubeconfig = async () => {
   console.log("Writing kubeconfig");
   await writeFile(
-    join(currentWorkingDir, ARTIFACTS_DIR_NAME, KUBECONFIG_FILE_NAME),
+    path.join(currentWorkingDir, ARTIFACTS_DIR_NAME, KUBECONFIG_FILE_NAME),
     KUBECONFIG_FILE_DATA
   );
 };
@@ -358,8 +388,12 @@ const up = async () => {
   console.log("Starting DKP mirror!");
   await dockerNetwork();
   await etcdContainer();
-  parseClusterResources();
-  parseCustomResources();
+  parseResources([
+    ...getClusterScopedResources(),
+    ...getNamespaceScopedResources(),
+    ...getClusterScopedCustomResources(),
+    ...getNamespaceScopedCustomResources(),
+  ]);
   await createArtifactsDir();
   await writeApiserverTokenFile();
   await apiServerContainer();
@@ -367,7 +401,7 @@ const up = async () => {
   console.log("Successfully started DKP mirror!");
   console.log(`
     To access the DKP mirror, execute:
-    export KUBECONFIG=${join(
+    export KUBECONFIG=${path.join(
       currentWorkingDir,
       ARTIFACTS_DIR_NAME,
       KUBECONFIG_FILE_NAME
