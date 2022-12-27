@@ -1,10 +1,10 @@
-import { join } from 'path'
+import { join } from 'path';
 
-import { APISERVER_IMAGE, APISERVER_TOKEN_FILE_NAME, ARTIFACTS_DIR_NAME } from '../../constants'
-import getServiceSubnet from '../cluster/getServiceSubnet'
-import { currentWorkingDir } from '../directories'
-import sleep from '../sleep'
-import dockerClient from './client'
+import { APISERVER_IMAGE, APISERVER_TOKEN_FILE_NAME, ARTIFACTS_DIR_NAME } from '../../constants';
+import getServiceSubnet from '../cluster/getServiceSubnet';
+import { currentWorkingDir } from '../directories';
+import sleep from '../sleep';
+import dockerClient from './client';
 
 const docker = dockerClient;
 
@@ -16,9 +16,8 @@ const apiServerContainer = async () => {
   await new Promise((res) => docker.modem.followProgress(pullStream, res));
   console.log("Successfully pulled apiserver image");
 
-  const serviceSubnet: string | undefined = await getServiceSubnet();
+  const serviceSubnet: string | undefined = getServiceSubnet();
 
-  console.log("Creating apiserver container");
   const container = await docker.createContainer({
     name: "dkp-mirror-kube-apiserver",
     Hostname: "dkp-mirror-kube-apiserver",
