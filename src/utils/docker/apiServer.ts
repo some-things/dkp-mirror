@@ -13,7 +13,12 @@ const apiServerContainer = async () => {
   const pullStream = await docker.pull(APISERVER_IMAGE);
 
   console.log("Waiting for apiserver image pull to complete");
-  await new Promise((res) => docker.modem.followProgress(pullStream, res));
+  await new Promise((res) =>
+    docker.modem.followProgress(pullStream, res, (event) => {
+      const { status, progress } = event;
+      console.log(`${status} ${progress || ""}`);
+    })
+  );
   console.log("Successfully pulled apiserver image");
 
   const serviceSubnet: string | undefined = getServiceSubnet();
