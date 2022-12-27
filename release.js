@@ -28,6 +28,7 @@ const platformArchToPkgBuilds = {
   "darwin-arm64": [
     `${nodeTargetVersion}-${platformToPkg.darwin}-${archToPkg.x64}`,
     `${nodeTargetVersion}-${platformToPkg.linux}-${archToPkg.x64}`,
+    `${nodeTargetVersion}-${platformToPkg.darwin}-${archToPkg.arm64}`,
   ],
   "linux-x64": [
     `${nodeTargetVersion}-${platformToPkg.darwin}-${archToPkg.x64}`,
