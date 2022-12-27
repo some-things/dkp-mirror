@@ -30,8 +30,13 @@ program
 program
   .command("up")
   .description("Start the DKP mirror")
-  .action(async () => {
-    await up();
+  .option(
+    "-s, --sync",
+    "Disables async (parallel) execution; useful if etcd is overloaded, but will take longer to complete",
+    false
+  )
+  .action(async ({ sync }) => {
+    await up(sync);
   });
 
 program
