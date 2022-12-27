@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsc",
     "run": "docker rm -f dkp-mirror-etcd dkp-mirror-kube-apiserver; time ts-node ./src/index.ts up |tee  debug.log",
-    "release": "pkg package.json"
+    "release": "rm -f ./release/* && pkg package.json"
   },
   "repository": {
     "type": "git",
@@ -49,6 +49,10 @@
     "outputPath": "release/",
     "assets": [
       "node_modules/**/*"
+    ],
+    "targets": [
+      "node16-linux-x64",
+      "node16-macos-x64"
     ]
   }
 }
