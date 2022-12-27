@@ -23,6 +23,7 @@ const apiServerContainer = async () => {
 
   const serviceSubnet: string | undefined = getServiceSubnet();
 
+  console.log("Creating apiserver container");
   const container = await docker.createContainer({
     name: "dkp-mirror-kube-apiserver",
     Hostname: "dkp-mirror-kube-apiserver",
@@ -72,15 +73,42 @@ const apiServerContainer = async () => {
     },
     Image: APISERVER_IMAGE,
   });
-
   console.log("Successfully created apiserver container");
 
   console.log("Starting apiserver container");
-  await container.start();
+  try {
+    await container.start();
+  } catch (e) {
+    console.log("Failed to start apiserver container");
+    console.error(e);
+    process.exit(1);
+  }
+
   console.log("Successfully started apiserver container");
 
-  // TODO: better readiness check for apiserver
-  await sleep(3000);
+  console.log("Waiting for apiserver container to be in running state");
+  for (let i = 0; i < 10; i++) {
+    try {
+      await sleep(3000);
+      const state = await container.inspect();
+      if (state.State.Running) {
+        break;
+      } else {
+        console.log(
+          `Waited ${(i + 1) * 3} of 30 seconds for apiserver container to start`
+        );
+        throw new Error("apiserver container not in a running state");
+      }
+    } catch (e) {
+      if (i === 9) {
+        console.log(
+          "Failed to start apiserver container after waiting 30 seconds"
+        );
+        console.error(e);
+        process.exit(1);
+      }
+    }
+  }
 
   return container;
 };
