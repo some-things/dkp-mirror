@@ -1,8 +1,8 @@
-import { existsSync } from 'fs'
-import { rm } from 'fs/promises'
+import { constants as fsConstants } from 'fs';
+import { access, rm } from 'fs/promises';
 
-import { ARTIFACTS_DIR_NAME } from '../constants'
-import dockerClient from '../utils/docker/client'
+import { ARTIFACTS_DIR_NAME } from '../constants';
+import dockerClient from '../utils/docker/client';
 
 const down = async () => {
   const docker = dockerClient;
@@ -17,7 +17,11 @@ const down = async () => {
     }
   });
 
-  if (existsSync(ARTIFACTS_DIR_NAME)) {
+  if (
+    await access(ARTIFACTS_DIR_NAME, fsConstants.F_OK)
+      .then(() => true)
+      .catch(() => false)
+  ) {
     console.log("Removing artifacts directory");
     await rm(ARTIFACTS_DIR_NAME, { recursive: true });
   }

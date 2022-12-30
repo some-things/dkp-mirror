@@ -11,7 +11,7 @@ const program = new Command();
 program
   .name("dkp-mirror")
   .description("Mirror your DKP cluster from diagnostic bundle data")
-  .version("v1.3.0");
+  .version("v1.3.1");
 
 program
   .command("extract")

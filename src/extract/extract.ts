@@ -1,5 +1,5 @@
-import { existsSync } from 'fs';
-import { mkdir } from 'fs/promises';
+import { constants as fsConstants } from 'fs';
+import { access, mkdir } from 'fs/promises';
 import { join, parse, resolve } from 'path';
 import { x } from 'tar';
 
@@ -14,7 +14,11 @@ const extract = async (
   const resolvedBundleFile = resolve(bundleFile);
 
   // if output dir does not exist, create it
-  if (existsSync(extractOutputDir) === false) {
+  if (
+    !(await access(extractOutputDir, fsConstants.F_OK)
+      .then(() => true)
+      .catch(() => false))
+  ) {
     console.log("Output dir does not exist, creating it");
     await mkdir(extractOutputDir, { recursive: true });
     console.log(`Output dir created: ${extractOutputDir}`);

@@ -190,3 +190,4 @@ release
 dist/
 .dkp-mirror
 .jshintrc
+.vscode/launch.json
