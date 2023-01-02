@@ -29,6 +29,10 @@ const etcdContainer = async (): Promise<Container> => {
       "http://dkp-mirror-etcd:2379",
       "-listen-client-urls",
       "http://0.0.0.0:2379",
+      "-log-level",
+      "debug",
+      "-logger",
+      "zap",
     ],
     ExposedPorts: {
       "2379/tcp": {},
