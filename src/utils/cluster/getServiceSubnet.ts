@@ -15,7 +15,7 @@ const getKubeadmServiceSubnet = async () => {
 };
 
 // we instead read from apiserver flags, as this seems to be the most reliable when accounting for non-kubeadm clusters
-const getServiceSubnet = () => {
+const getServiceSubnet = async () => {
   const kubeSystemPodsJSONFilePath = path.join(
     getClusterResourcesDir(),
     "pods/kube-system.json"
@@ -32,9 +32,9 @@ const getServiceSubnet = () => {
     return;
   }
 
-  const kubeSystemPods =
-    resourceFileToJSON(kubeSystemPodsJSONFilePath) ||
-    resourceFileToJSON(kubeSystemPodsYAMLFilePath);
+  const kubeSystemPods = existsSync(kubeSystemPodsJSONFilePath)
+    ? await resourceFileToJSON(kubeSystemPodsJSONFilePath)
+    : await resourceFileToJSON(kubeSystemPodsYAMLFilePath);
 
   // we only check the first apiserver pod, as we assume all apiserver pods have the same service subnet
   // todo: we assume all apiserver pods have label component=kube-apiserver -- test this assumption (e.g., different distros)

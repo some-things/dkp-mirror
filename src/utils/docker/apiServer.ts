@@ -1,3 +1,4 @@
+import Dockerode from 'dockerode';
 import { join } from 'path';
 
 import { APISERVER_IMAGE, APISERVER_TOKEN_FILE_NAME, ARTIFACTS_DIR_NAME } from '../../constants';
@@ -8,7 +9,7 @@ import dockerClient from './client';
 
 const docker = dockerClient;
 
-const apiServerContainer = async () => {
+const apiServerContainer = async (): Promise<Dockerode.Container> => {
   console.log("Pulling apiserver image");
   const pullStream = await docker.pull(APISERVER_IMAGE);
 
@@ -21,7 +22,13 @@ const apiServerContainer = async () => {
   );
   console.log("Successfully pulled apiserver image");
 
-  const serviceSubnet: string | undefined = getServiceSubnet();
+  console.log("Getting service subnet from config");
+  const serviceSubnet: string | undefined = await getServiceSubnet();
+  console.log(
+    typeof serviceSubnet === "string"
+      ? `Service subnet: ${serviceSubnet}`
+      : `Could not determine service subnet`
+  );
 
   console.log("Creating apiserver container");
   const container = await docker.createContainer({

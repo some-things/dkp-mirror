@@ -1,5 +1,5 @@
-import { Dirent, readdirSync, readFileSync } from 'fs';
-import { mkdir, writeFile } from 'fs/promises';
+import { Dirent, readdirSync } from 'fs';
+import { mkdir, readdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 
 import { APISERVER_TOKEN_FILE_DATA, APISERVER_TOKEN_FILE_NAME, ARTIFACTS_DIR_NAME, KUBECONFIG_FILE_DATA, KUBECONFIG_FILE_NAME } from '../constants';
@@ -60,47 +60,55 @@ const isNamespacedResource = (file: Dirent): boolean => {
 };
 
 // todo: condense these
-const getClusterScopedResources = () => {
-  return readdirSync(getClusterResourcesDir(), {
+const getClusterScopedResources = async () => {
+  return await readdir(getClusterResourcesDir(), {
     withFileTypes: true,
-  }).filter(
-    (f) =>
-      !defaultDirectoriesToIgnore.includes(f.name) &&
-      !defaultFilesToIgnore.includes(f.name) &&
-      !isNamespacedResource(f)
+  }).then((d) =>
+    d.filter(
+      (f) =>
+        !defaultDirectoriesToIgnore.includes(f.name) &&
+        !defaultFilesToIgnore.includes(f.name) &&
+        !isNamespacedResource(f)
+    )
   );
 };
 
-const getNamespaceScopedResources = () => {
-  return readdirSync(getClusterResourcesDir(), {
+const getNamespaceScopedResources = async () => {
+  return await readdir(getClusterResourcesDir(), {
     withFileTypes: true,
-  }).filter(
-    (f) =>
-      !defaultDirectoriesToIgnore.includes(f.name) &&
-      !defaultFilesToIgnore.includes(f.name) &&
-      isNamespacedResource(f)
+  }).then((d) =>
+    d.filter(
+      (f) =>
+        !defaultDirectoriesToIgnore.includes(f.name) &&
+        !defaultFilesToIgnore.includes(f.name) &&
+        isNamespacedResource(f)
+    )
   );
 };
 
 const getClusterScopedCustomResources = () => {
-  return readdirSync(getCustomResourcesDir(), {
+  return readdir(getCustomResourcesDir(), {
     withFileTypes: true,
-  }).filter(
-    (f) =>
-      !defaultDirectoriesToIgnore.includes(f.name) &&
-      !defaultFilesToIgnore.includes(f.name) &&
-      !isNamespacedResource(f)
+  }).then((d) =>
+    d.filter(
+      (f) =>
+        !defaultDirectoriesToIgnore.includes(f.name) &&
+        !defaultFilesToIgnore.includes(f.name) &&
+        !isNamespacedResource(f)
+    )
   );
 };
 
 const getNamespaceScopedCustomResources = () => {
-  return readdirSync(getCustomResourcesDir(), {
+  return readdir(getCustomResourcesDir(), {
     withFileTypes: true,
-  }).filter(
-    (f) =>
-      !defaultDirectoriesToIgnore.includes(f.name) &&
-      !defaultFilesToIgnore.includes(f.name) &&
-      isNamespacedResource(f)
+  }).then((d) =>
+    d.filter(
+      (f) =>
+        !defaultDirectoriesToIgnore.includes(f.name) &&
+        !defaultFilesToIgnore.includes(f.name) &&
+        isNamespacedResource(f)
+    )
   );
 };
 
@@ -238,6 +246,9 @@ const getKind = (filename: string): string => {
 };
 
 const parseResourcesSync = async (files: Dirent[]) => {
+  const clusterResourcesDir = getClusterResourcesDir();
+  const customResourcesDir = getCustomResourcesDir();
+
   for (let i = 0; i < files.length; i++) {
     const namespaced: boolean = isNamespacedResource(files[i]);
     const customResource: boolean = isCustomResource(files[i]);
@@ -264,7 +275,7 @@ const parseResourcesSync = async (files: Dirent[]) => {
       // for each file in the resource's directory, push it to the filesToParse array
       readdirSync(
         path.join(
-          customResource ? getCustomResourcesDir() : getClusterResourcesDir(),
+          customResource ? customResourcesDir : clusterResourcesDir,
           files[i].name
         ),
         {
@@ -274,9 +285,7 @@ const parseResourcesSync = async (files: Dirent[]) => {
         if (isValidFileType(f)) {
           filesToParsePaths.push(
             path.join(
-              customResource
-                ? getCustomResourcesDir()
-                : getClusterResourcesDir(),
+              customResource ? customResourcesDir : clusterResourcesDir,
               files[i].name,
               f.name
             )
@@ -287,14 +296,14 @@ const parseResourcesSync = async (files: Dirent[]) => {
     } else {
       filesToParsePaths.push(
         path.join(
-          customResource ? getCustomResourcesDir() : getClusterResourcesDir(),
+          customResource ? customResourcesDir : clusterResourcesDir,
           files[i].name
         )
       );
     }
 
     for (let j = 0; j < filesToParsePaths.length; j++) {
-      const objects: any[] = resourceFileToJSON(filesToParsePaths[j]);
+      const objects: any[] = await resourceFileToJSON(filesToParsePaths[j]);
 
       console.log(`info: parsing ${filesToParsePaths[j]}`);
 
@@ -313,7 +322,7 @@ const parseResourcesSync = async (files: Dirent[]) => {
 
         if (!customResource) {
           objects[k].kind = kind;
-          objects[k].apiVersion = getApiVersion(kind);
+          objects[k].apiVersion = await getApiVersion(kind);
           if (
             kind === "CustomResourceDefinition" &&
             objects[k]["spec"]["conversion"]["strategy"] === "Webhook"
@@ -345,8 +354,11 @@ const parseResourcesSync = async (files: Dirent[]) => {
   }
 };
 
-const parseResources = (files: Dirent[]) => {
-  files.forEach((f) => {
+const parseResources = async (files: Dirent[]) => {
+  const customResourcesDir = getCustomResourcesDir();
+  const clusterResourcesDir = getClusterResourcesDir();
+
+  return files.forEach(async (f) => {
     const namespaced: boolean = isNamespacedResource(f);
     const customResource: boolean = isCustomResource(f);
     // todo: reevaluate the stuff below and where it is used
@@ -376,7 +388,7 @@ const parseResources = (files: Dirent[]) => {
     // namespaced
     if (namespaced) {
       // for each file in the resource's directory, push it to the filesToParse array
-      readdirSync(
+      await readdir(
         path.join(
           customResource ? getCustomResourcesDir() : getClusterResourcesDir(),
           f.name
@@ -384,34 +396,35 @@ const parseResources = (files: Dirent[]) => {
         {
           withFileTypes: true,
         }
-      ).forEach((fp) => {
-        if (isValidFileType(fp)) {
-          filesToParsePaths.push(
-            path.join(
-              customResource
-                ? getCustomResourcesDir()
-                : getClusterResourcesDir(),
-              f.name,
-              fp.name
-            )
-          );
-        }
-      });
+      ).then((d) =>
+        d.forEach((fp) => {
+          if (isValidFileType(fp)) {
+            filesToParsePaths.push(
+              path.join(
+                customResource ? customResourcesDir : clusterResourcesDir,
+                f.name,
+                fp.name
+              )
+            );
+          }
+        })
+      );
       // non-namespaced
     } else {
       filesToParsePaths.push(
         path.join(
-          customResource ? getCustomResourcesDir() : getClusterResourcesDir(),
+          customResource ? customResourcesDir : clusterResourcesDir,
           f.name
         )
       );
     }
 
-    filesToParsePaths.forEach((fp) => {
-      const objects = resourceFileToJSON(fp);
+    return filesToParsePaths.forEach(async (fp) => {
+      const objects = await resourceFileToJSON(fp);
 
       console.log(`info: parsing ${fp}`);
-      objects.forEach(async (obj: any) => {
+
+      return objects.forEach(async (obj: any) => {
         const objName = obj.metadata?.name;
         if (!objName) {
           console.warn(`warning: skipping object without name in file: ${fp}`);
@@ -424,7 +437,7 @@ const parseResources = (files: Dirent[]) => {
 
         if (!customResource) {
           obj.kind = kind;
-          obj.apiVersion = getApiVersion(kind);
+          obj.apiVersion = await getApiVersion(kind);
           if (
             kind === "CustomResourceDefinition" &&
             obj["spec"]["conversion"]["strategy"] === "Webhook"
@@ -447,7 +460,16 @@ const parseResources = (files: Dirent[]) => {
         }${namespaced ? objNamespace + "/" : ""}${objName}`;
 
         try {
-          await etcdClient.put(etcdKey).value(JSON.stringify(obj));
+          const result = await etcdClient
+            .put(etcdKey)
+            .value(JSON.stringify(obj));
+          console.log(result);
+          if (!(await etcdClient.get(etcdKey).exists())) {
+            console.error(`error: etcd put failed for key ${etcdKey}`);
+            throw new Error(`error: etcd put failed for key ${etcdKey}`);
+          } else {
+            console.log(`info: etcd put successful for key ${etcdKey}`);
+          }
         } catch (e) {
           console.error(`error: etcd put failed for key ${etcdKey}: ${e}`);
         }
@@ -456,14 +478,17 @@ const parseResources = (files: Dirent[]) => {
   });
 };
 
-const getApiVersion = (kind: string): string => {
+const getApiVersion = async (kind: string): Promise<string> => {
   // TODO: check case where it is possible to have multiple apiGroupVersions/apiVersions for a single kind name
   // need to check more for GVKs
   // totally possible that there will be CRs that use the same "kind name" (e.g.,  "node")
   // for CRs, we can just get the apiVersion from the object
   // however, we may have to hardcode some apiVersions for "default" resources (e.g., non-CRs)
   const apiResourcesJson = JSON.parse(
-    readFileSync(path.join(getClusterResourcesDir(), "resources.json"), "utf8")
+    await readFile(
+      path.join(getClusterResourcesDir(), "resources.json"),
+      "utf8"
+    )
   );
 
   // TODO: maybe clean this up a bit?
@@ -506,22 +531,27 @@ const up = async (sync: boolean) => {
   console.log("Starting DKP mirror!");
   await dockerNetwork();
   await etcdContainer();
-  if (sync) {
-    await parseResourcesSync([
-      ...getClusterScopedResources(),
-      ...getNamespaceScopedResources(),
-      ...getClusterScopedCustomResources(),
-      ...getNamespaceScopedCustomResources(),
-    ]);
-  } else {
-    parseResources([
-      // should these all use fs/promises?
-      ...getClusterScopedResources(),
-      ...getNamespaceScopedResources(),
-      ...getClusterScopedCustomResources(),
-      ...getNamespaceScopedCustomResources(),
-    ]);
-  }
+  const clusterScopedResources = await getClusterScopedResources();
+  const namespaceScopedResources = await getNamespaceScopedResources();
+  const clusterScopedCustomResources = await getClusterScopedCustomResources();
+  const namespaceScopedCustomResources =
+    await getNamespaceScopedCustomResources();
+
+  //todo: deleteme
+  sync
+    ? parseResourcesSync([
+        ...clusterScopedResources,
+        ...namespaceScopedResources,
+        ...clusterScopedCustomResources,
+        ...namespaceScopedCustomResources,
+      ])
+    : parseResources([
+        ...clusterScopedResources,
+        ...namespaceScopedResources,
+        ...clusterScopedCustomResources,
+        ...namespaceScopedCustomResources,
+      ]);
+
   await createArtifactsDir();
   await writeApiserverTokenFile();
   await apiServerContainer();

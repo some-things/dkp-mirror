@@ -1,9 +1,11 @@
-import { readFileSync } from 'fs';
+import { readFile } from 'fs/promises';
 import path from 'path';
 import YAML from 'yaml';
 
-export const resourceFileToJSON = (filePath: string): object[] => {
-  const content = readFileSync(filePath, { encoding: "utf-8" });
+export const resourceFileToJSON = async (
+  filePath: string
+): Promise<object[]> => {
+  const content = await readFile(filePath, { encoding: "utf-8" });
 
   if (path.extname(filePath) === ".json") {
     try {
