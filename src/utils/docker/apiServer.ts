@@ -34,7 +34,6 @@ const apiServerContainer = async (): Promise<Dockerode.Container> => {
   const container = await docker.createContainer({
     name: "dkp-mirror-kube-apiserver",
     Hostname: "dkp-mirror-kube-apiserver",
-    // TODO: set service cidr from bundle
     Cmd: [
       "kube-apiserver",
       "--etcd-servers=http://dkp-mirror-etcd:2379",
